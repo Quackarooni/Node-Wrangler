@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 bl_info = {
-    "name": "Node Wrangler",
+    "name": "Forked Wrangler",
     "author": "Bartek Skorupa, Greg Zaal, Sebastian Koenig, Christian Brinkmann, Florian Meyer",
     "version": (3, 43),
     "blender": (3, 4, 0),
@@ -148,7 +148,7 @@ geo_combine_operations = [
     ('DIFFERENCE', 'Difference', 'Difference Mode'),
 ]
 
-# in NWBatchChangeNodes additional types/operations. Can be used as 'items' for EnumProperty.
+# in FWBatchChangeNodes additional types/operations. Can be used as 'items' for EnumProperty.
 # used list, not tuple for easy merging with other lists.
 navs = [
     ('CURRENT', 'Current', 'Leave at current state'),
@@ -288,6 +288,40 @@ def autolink(node1, node2, links):
     link_made = False
     available_inputs = [inp for inp in node2.inputs if inp.enabled]
     available_outputs = [outp for outp in node1.outputs if outp.enabled]
+    visible_inputs = [inp for inp in node2.inputs if (inp.enabled and not inp.hide)]
+    visible_outputs = [outp for outp in node1.outputs if (outp.enabled and not outp.hide)]
+
+    for outp in visible_outputs:
+        for inp in visible_inputs:
+            if not inp.is_linked and inp.name == outp.name:
+                link_made = True
+                links.new(outp, inp)
+                return True
+
+    for outp in visible_outputs:
+        for inp in visible_inputs:
+            if not inp.is_linked and inp.type == outp.type:
+                link_made = True
+                links.new(outp, inp)
+                return True
+
+    # force some connection even if the type doesn't match
+    if visible_outputs:
+        for inp in visible_inputs:
+            if not inp.is_linked:
+                link_made = True
+                links.new(visible_outputs[0], inp)
+                return True
+
+    # even if no sockets are open, force one of matching type
+    for outp in visible_outputs:
+        for inp in visible_inputs:
+            if inp.type == outp.type:
+                link_made = True
+                links.new(outp, inp)
+                return True
+
+    #connect without considering hidden nodes
     for outp in available_outputs:
         for inp in available_inputs:
             if not inp.is_linked and inp.name == outp.name:
@@ -575,8 +609,8 @@ def draw_callback_nodeoutline(self, context, mode):
         m2x = self.mouse_path[-1][0]
         m2y = self.mouse_path[-1][1]
 
-        n1 = nodes[context.scene.NWLazySource]
-        n2 = nodes[context.scene.NWLazyTarget]
+        n1 = nodes[context.scene.FWLazySource]
+        n2 = nodes[context.scene.FWLazyTarget]
 
         if n1 == n2:
             col_outer = (0.4, 0.4, 0.4, 0.4)
@@ -621,7 +655,7 @@ def get_nodes_links(context):
 
 def is_viewer_socket(socket):
     # checks if a internal socket is a valid viewer socket
-    return socket.name == viewer_socket_name and socket.NWViewerSocket
+    return socket.name == viewer_socket_name and socket.FWViewerSocket
 
 def get_internal_socket(socket):
     #get the internal socket from a socket inside or outside the group
@@ -676,7 +710,7 @@ def get_output_location(tree):
     return loc_x, loc_y
 
 # Principled prefs
-class NWPrincipledPreferences(bpy.types.PropertyGroup):
+class FWPrincipledPreferences(bpy.types.PropertyGroup):
     base_color: StringProperty(
         name='Base Color',
         default='diffuse diff albedo base col color',
@@ -731,7 +765,7 @@ class NWPrincipledPreferences(bpy.types.PropertyGroup):
         description='Naming Components for AO maps')
 
 # Addon prefs
-class NWNodeWrangler(bpy.types.AddonPreferences):
+class FWNodeWrangler(bpy.types.AddonPreferences):
     bl_idname = __name__
 
     merge_hide: EnumProperty(
@@ -768,7 +802,7 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
         default=False,
         description="Expand this box into a list of all naming tags for principled texture setup"
     )
-    principled_tags: bpy.props.PointerProperty(type=NWPrincipledPreferences)
+    principled_tags: bpy.props.PointerProperty(type=FWPrincipledPreferences)
 
     def draw(self, context):
         layout = self.layout
@@ -823,7 +857,7 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
 
 
 
-def nw_check(context):
+def fw_check(context):
     space = context.space_data
     valid_trees = ["ShaderNodeTree", "CompositorNodeTree", "TextureNodeTree", "GeometryNodeTree"]
 
@@ -835,16 +869,16 @@ def nw_check(context):
 
     return False
 
-class NWBase:
+class FWBase:
     @classmethod
     def poll(cls, context):
-        return nw_check(context)
+        return fw_check(context)
 
 
 # OPERATORS
-class NWLazyMix(Operator, NWBase):
+class FWLazyMix(Operator, FWBase):
     """Add a Mix RGB/Shader node by interactively drawing lines between nodes"""
-    bl_idname = "node.nw_lazy_mix"
+    bl_idname = "node.fw_lazy_mix"
     bl_label = "Mix Nodes"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -856,16 +890,16 @@ class NWLazyMix(Operator, NWBase):
         start_pos = [event.mouse_region_x, event.mouse_region_y]
 
         node1 = None
-        if not context.scene.NWBusyDrawing:
+        if not context.scene.FWBusyDrawing:
             node1 = node_at_pos(nodes, context, event)
             if node1:
-                context.scene.NWBusyDrawing = node1.name
+                context.scene.FWBusyDrawing = node1.name
         else:
-            if context.scene.NWBusyDrawing != 'STOP':
-                node1 = nodes[context.scene.NWBusyDrawing]
+            if context.scene.FWBusyDrawing != 'STOP':
+                node1 = nodes[context.scene.FWBusyDrawing]
 
-        context.scene.NWLazySource = node1.name
-        context.scene.NWLazyTarget = node_at_pos(nodes, context, event).name
+        context.scene.FWLazySource = node1.name
+        context.scene.FWLazyTarget = node_at_pos(nodes, context, event).name
 
         if event.type == 'MOUSEMOVE':
             self.mouse_path.append((event.mouse_region_x, event.mouse_region_y))
@@ -877,7 +911,7 @@ class NWLazyMix(Operator, NWBase):
             node2 = None
             node2 = node_at_pos(nodes, context, event)
             if node2:
-                context.scene.NWBusyDrawing = node2.name
+                context.scene.FWBusyDrawing = node2.name
 
             if node1 == node2:
                 cont = False
@@ -889,9 +923,9 @@ class NWLazyMix(Operator, NWBase):
                     node1.select = True
                     node2.select = True
 
-                    bpy.ops.node.nw_merge_nodes(mode="MIX", merge_type="AUTO")
+                    bpy.ops.node.fw_merge_nodes(mode="MIX", merge_type="AUTO")
 
-            context.scene.NWBusyDrawing = ""
+            context.scene.FWBusyDrawing = ""
             return {'FINISHED'}
 
         elif event.type == 'ESC':
@@ -918,9 +952,9 @@ class NWLazyMix(Operator, NWBase):
             return {'CANCELLED'}
 
 
-class NWLazyConnect(Operator, NWBase):
+class FWLazyConnect(Operator, FWBase):
     """Connect two nodes without clicking a specific socket (automatically determined"""
-    bl_idname = "node.nw_lazy_connect"
+    bl_idname = "node.fw_lazy_connect"
     bl_label = "Lazy Connect"
     bl_options = {'REGISTER', 'UNDO'}
     with_menu: BoolProperty()
@@ -933,16 +967,16 @@ class NWLazyConnect(Operator, NWBase):
         start_pos = [event.mouse_region_x, event.mouse_region_y]
 
         node1 = None
-        if not context.scene.NWBusyDrawing:
+        if not context.scene.FWBusyDrawing:
             node1 = node_at_pos(nodes, context, event)
             if node1:
-                context.scene.NWBusyDrawing = node1.name
+                context.scene.FWBusyDrawing = node1.name
         else:
-            if context.scene.NWBusyDrawing != 'STOP':
-                node1 = nodes[context.scene.NWBusyDrawing]
+            if context.scene.FWBusyDrawing != 'STOP':
+                node1 = nodes[context.scene.FWBusyDrawing]
 
-        context.scene.NWLazySource = node1.name
-        context.scene.NWLazyTarget = node_at_pos(nodes, context, event).name
+        context.scene.FWLazySource = node1.name
+        context.scene.FWLazyTarget = node_at_pos(nodes, context, event).name
 
         if event.type == 'MOUSEMOVE':
             self.mouse_path.append((event.mouse_region_x, event.mouse_region_y))
@@ -954,7 +988,7 @@ class NWLazyConnect(Operator, NWBase):
             node2 = None
             node2 = node_at_pos(nodes, context, event)
             if node2:
-                context.scene.NWBusyDrawing = node2.name
+                context.scene.FWBusyDrawing = node2.name
 
             if node1 == node2:
                 cont = False
@@ -976,9 +1010,9 @@ class NWLazyConnect(Operator, NWBase):
                     #link_success = autolink(node1, node2, links)
                     if self.with_menu:
                         if len(node1.outputs) > 1 and node2.inputs:
-                            bpy.ops.wm.call_menu("INVOKE_DEFAULT", name=NWConnectionListOutputs.bl_idname)
+                            bpy.ops.wm.call_menu("INVOKE_DEFAULT", name=FWConnectionListOutputs.bl_idname)
                         elif len(node1.outputs) == 1:
-                            bpy.ops.node.nw_call_inputs_menu(from_socket=0)
+                            bpy.ops.node.fw_call_inputs_menu(from_socket=0)
                     else:
                         link_success = autolink(node1, node2, links)
 
@@ -989,7 +1023,7 @@ class NWLazyConnect(Operator, NWBase):
 
             if link_success:
                 force_update(context)
-            context.scene.NWBusyDrawing = ""
+            context.scene.FWBusyDrawing = ""
             return {'FINISHED'}
 
         elif event.type == 'ESC':
@@ -1003,7 +1037,7 @@ class NWLazyConnect(Operator, NWBase):
             nodes, links = get_nodes_links(context)
             node = node_at_pos(nodes, context, event)
             if node:
-                context.scene.NWBusyDrawing = node.name
+                context.scene.FWBusyDrawing = node.name
 
             # the arguments we pass the the callback
             mode = "LINK"
@@ -1023,9 +1057,9 @@ class NWLazyConnect(Operator, NWBase):
             return {'CANCELLED'}
 
 
-class NWDeleteUnused(Operator, NWBase):
+class FWDeleteUnused(Operator, FWBase):
     """Delete all nodes whose output is not used"""
-    bl_idname = 'node.nw_del_unused'
+    bl_idname = 'node.fw_del_unused'
     bl_label = 'Delete Unused Nodes'
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -1047,7 +1081,7 @@ class NWDeleteUnused(Operator, NWBase):
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             if context.space_data.node_tree.nodes:
                 valid = True
         return valid
@@ -1129,16 +1163,16 @@ class NWDeleteUnused(Operator, NWBase):
         return context.window_manager.invoke_confirm(self, event)
 
 
-class NWSwapLinks(Operator, NWBase):
+class FWSwapLinks(Operator, FWBase):
     """Swap the output connections of the two selected nodes, or two similar inputs of a single node"""
-    bl_idname = 'node.nw_swap_links'
+    bl_idname = 'node.fw_swap_links'
     bl_label = 'Swap Links'
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             if context.selected_nodes:
                 valid = len(context.selected_nodes) <= 2
         return valid
@@ -1245,16 +1279,16 @@ class NWSwapLinks(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWResetBG(Operator, NWBase):
+class FWResetBG(Operator, FWBase):
     """Reset the zoom and position of the background image"""
-    bl_idname = 'node.nw_bg_reset'
+    bl_idname = 'node.fw_bg_reset'
     bl_label = 'Reset Backdrop'
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             snode = context.space_data
             valid = snode.tree_type == 'CompositorNodeTree'
         return valid
@@ -1266,9 +1300,9 @@ class NWResetBG(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWAddAttrNode(Operator, NWBase):
+class FWAddAttrNode(Operator, FWBase):
     """Add an Attribute node with this name"""
-    bl_idname = 'node.nw_add_attr_node'
+    bl_idname = 'node.fw_add_attr_node'
     bl_label = 'Add UV map'
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -1280,8 +1314,8 @@ class NWAddAttrNode(Operator, NWBase):
         nodes.active.attribute_name = self.attr_name
         return {'FINISHED'}
 
-class NWPreviewNode(Operator, NWBase):
-    bl_idname = "node.nw_preview_node"
+class FWPreviewNode(Operator, FWBase):
+    bl_idname = "node.fw_preview_node"
     bl_label = "Preview Node"
     bl_description = "Connect active node to the Node Group output or the Material Output"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1297,7 +1331,7 @@ class NWPreviewNode(Operator, NWBase):
 
     @classmethod
     def poll(cls, context):
-        if nw_check(context):
+        if fw_check(context):
             space = context.space_data
             if space.tree_type == 'ShaderNodeTree' or space.tree_type == 'GeometryNodeTree':
                 if context.active_node:
@@ -1336,7 +1370,7 @@ class NWPreviewNode(Operator, NWBase):
                 #create viewer socket
                 node.node_tree.outputs.new(socket_type, viewer_socket_name)
                 index = len(node.node_tree.outputs) - 1
-                node.node_tree.outputs[index].NWViewerSocket = True
+                node.node_tree.outputs[index].FWViewerSocket = True
             return index
 
     def init_shader_variables(self, space, shader_type):
@@ -1397,8 +1431,6 @@ class NWPreviewNode(Operator, NWBase):
         # get all viewer sockets in a material tree
         for node in tree.nodes:
             if hasattr(node, "node_tree"):
-                if node.node_tree is None:
-                    continue
                 for socket in node.node_tree.outputs:
                     if is_viewer_socket(socket) and (socket not in sockets):
                         sockets.append(socket)
@@ -1613,8 +1645,8 @@ class NWPreviewNode(Operator, NWBase):
             return {'CANCELLED'}
 
 
-class NWFrameSelected(Operator, NWBase):
-    bl_idname = "node.nw_frame_selected"
+class FWFrameSelected(Operator, FWBase):
+    bl_idname = "node.fw_frame_selected"
     bl_label = "Frame Selected"
     bl_description = "Add a frame node and parent the selected nodes to it"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1664,15 +1696,15 @@ class NWFrameSelected(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWReloadImages(Operator):
-    bl_idname = "node.nw_reload_images"
+class FWReloadImages(Operator):
+    bl_idname = "node.fw_reload_images"
     bl_label = "Reload Images"
     bl_description = "Update all the image nodes to match their files on disk"
 
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context) and context.space_data.tree_type != 'GeometryNodeTree':
+        if fw_check(context) and context.space_data.tree_type != 'GeometryNodeTree':
             if context.active_node is not None:
                 for out in context.active_node.outputs:
                     if is_visible_socket(out):
@@ -1707,9 +1739,9 @@ class NWReloadImages(Operator):
             return {'CANCELLED'}
 
 
-class NWSwitchNodeType(Operator, NWBase):
+class FWSwitchNodeType(Operator, FWBase):
     """Switch type of selected nodes """
-    bl_idname = "node.nw_swtch_node_type"
+    bl_idname = "node.fw_swtch_node_type"
     bl_label = "Switch Node Type"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -1894,8 +1926,8 @@ class NWSwitchNodeType(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWMergeNodes(Operator, NWBase):
-    bl_idname = "node.nw_merge_nodes"
+class FWMergeNodes(Operator, FWBase):
+    bl_idname = "node.fw_merge_nodes"
     bl_label = "Merge Nodes"
     bl_description = "Merge Selected Nodes"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1939,7 +1971,7 @@ class NWMergeNodes(Operator, NWBase):
         for output in node.outputs:
             if output.is_linked:
                 for olink in output.links:
-                    if NWMergeNodes.link_creates_cycle(olink, selected_nodes, depth+1):
+                    if FWMergeNodes.link_creates_cycle(olink, selected_nodes, depth+1):
                         return True
         # None of the outputs found a node in selected_nodes, so there is no cycle.
         return False
@@ -1969,7 +2001,7 @@ class NWMergeNodes(Operator, NWBase):
             # Search for the first node which had output links that do not create
             # a cycle, which we can then reconnect afterwards.
             if prev_links == [] and node.outputs[0].is_linked:
-                prev_links = [link for link in node.outputs[0].links if not NWMergeNodes.link_creates_cycle(link, selected_nodes)]
+                prev_links = [link for link in node.outputs[0].links if not FWMergeNodes.link_creates_cycle(link, selected_nodes)]
             # Get the index of the socket, the last one is a multi input, and is thus used repeatedly
             # To get the placement to look right we need to reverse the order in which we connect the
             # outputs to the multi input socket.
@@ -2271,8 +2303,8 @@ class NWMergeNodes(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWBatchChangeNodes(Operator, NWBase):
-    bl_idname = "node.nw_batch_change"
+class FWBatchChangeNodes(Operator, FWBase):
+    bl_idname = "node.fw_batch_change"
     bl_label = "Batch Change"
     bl_description = "Batch Change Blend Type and Math Operation"
     bl_options = {'REGISTER', 'UNDO'}
@@ -2332,8 +2364,8 @@ class NWBatchChangeNodes(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWChangeMixFactor(Operator, NWBase):
-    bl_idname = "node.nw_factor"
+class FWChangeMixFactor(Operator, FWBase):
+    bl_idname = "node.fw_factor"
     bl_label = "Change Factor"
     bl_description = "Change Factors of Mix Nodes and Mix Shader Nodes"
     bl_options = {'REGISTER', 'UNDO'}
@@ -2363,8 +2395,8 @@ class NWChangeMixFactor(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWCopySettings(Operator, NWBase):
-    bl_idname = "node.nw_copy_settings"
+class FWCopySettings(Operator, FWBase):
+    bl_idname = "node.fw_copy_settings"
     bl_label = "Copy Settings"
     bl_description = "Copy Settings of Active Node to Selected Nodes"
     bl_options = {'REGISTER', 'UNDO'}
@@ -2372,7 +2404,7 @@ class NWCopySettings(Operator, NWBase):
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             if (
                     context.active_node is not None and
                     context.active_node.type != 'FRAME'
@@ -2475,8 +2507,8 @@ class NWCopySettings(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWCopyLabel(Operator, NWBase):
-    bl_idname = "node.nw_copy_label"
+class FWCopyLabel(Operator, FWBase):
+    bl_idname = "node.fw_copy_label"
     bl_label = "Copy Label"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -2519,8 +2551,8 @@ class NWCopyLabel(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWClearLabel(Operator, NWBase):
-    bl_idname = "node.nw_clear_label"
+class FWClearLabel(Operator, FWBase):
+    bl_idname = "node.fw_clear_label"
     bl_label = "Clear Label"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -2540,9 +2572,9 @@ class NWClearLabel(Operator, NWBase):
             return context.window_manager.invoke_confirm(self, event)
 
 
-class NWModifyLabels(Operator, NWBase):
+class FWModifyLabels(Operator, FWBase):
     """Modify Labels of all selected nodes"""
-    bl_idname = "node.nw_modify_labels"
+    bl_idname = "node.fw_modify_labels"
     bl_label = "Modify Labels"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -2573,8 +2605,8 @@ class NWModifyLabels(Operator, NWBase):
         return context.window_manager.invoke_props_dialog(self)
 
 
-class NWAddTextureSetup(Operator, NWBase):
-    bl_idname = "node.nw_add_texture"
+class FWAddTextureSetup(Operator, FWBase):
+    bl_idname = "node.fw_add_texture"
     bl_label = "Texture Setup"
     bl_description = "Add Texture Node Setup to Selected Shaders"
     bl_options = {'REGISTER', 'UNDO'}
@@ -2583,7 +2615,7 @@ class NWAddTextureSetup(Operator, NWBase):
 
     @classmethod
     def poll(cls, context):
-        if nw_check(context):
+        if fw_check(context):
             space = context.space_data
             if space.tree_type == 'ShaderNodeTree':
                 return True
@@ -2654,8 +2686,8 @@ class NWAddTextureSetup(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWAddPrincipledSetup(Operator, NWBase, ImportHelper):
-    bl_idname = "node.nw_add_textures_for_principled"
+class FWAddPrincipledSetup(Operator, FWBase, ImportHelper):
+    bl_idname = "node.fw_add_textures_for_principled"
     bl_label = "Principled Texture Setup"
     bl_description = "Add Texture Node Setup for Principled BSDF"
     bl_options = {'REGISTER', 'UNDO'}
@@ -2691,7 +2723,7 @@ class NWAddPrincipledSetup(Operator, NWBase, ImportHelper):
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             space = context.space_data
             if space.tree_type == 'ShaderNodeTree':
                 valid = True
@@ -2949,9 +2981,9 @@ class NWAddPrincipledSetup(Operator, NWBase, ImportHelper):
         return {'FINISHED'}
 
 
-class NWAddReroutes(Operator, NWBase):
+class FWAddReroutes(Operator, FWBase):
     """Add Reroute Nodes and link them to outputs of selected nodes"""
-    bl_idname = "node.nw_add_reroutes"
+    bl_idname = "node.fw_add_reroutes"
     bl_label = "Add Reroutes"
     bl_description = "Add Reroutes to Outputs"
     bl_options = {'REGISTER', 'UNDO'}
@@ -3049,9 +3081,9 @@ class NWAddReroutes(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWLinkActiveToSelected(Operator, NWBase):
+class FWLinkActiveToSelected(Operator, FWBase):
     """Link active node to selected nodes basing on various criteria"""
-    bl_idname = "node.nw_link_active_to_selected"
+    bl_idname = "node.fw_link_active_to_selected"
     bl_label = "Link Active Node to Selected"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -3062,7 +3094,7 @@ class NWLinkActiveToSelected(Operator, NWBase):
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             if context.active_node is not None:
                 if context.active_node.select:
                     valid = True
@@ -3130,9 +3162,9 @@ class NWLinkActiveToSelected(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWAlignNodes(Operator, NWBase):
+class FWAlignNodes(Operator, FWBase):
     '''Align the selected nodes neatly in a row/column'''
-    bl_idname = "node.nw_align_nodes"
+    bl_idname = "node.fw_align_nodes"
     bl_label = "Align Nodes"
     bl_options = {'REGISTER', 'UNDO'}
     margin: IntProperty(name='Margin', default=50, description='The amount of space between nodes')
@@ -3200,8 +3232,8 @@ class NWAlignNodes(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWSelectParentChildren(Operator, NWBase):
-    bl_idname = "node.nw_select_parent_child"
+class FWSelectParentChildren(Operator, FWBase):
+    bl_idname = "node.fw_select_parent_child"
     bl_label = "Select Parent or Children"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -3231,9 +3263,9 @@ class NWSelectParentChildren(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWDetachOutputs(Operator, NWBase):
+class FWDetachOutputs(Operator, FWBase):
     """Detach outputs of selected node leaving inputs linked"""
-    bl_idname = "node.nw_detach_outputs"
+    bl_idname = "node.fw_detach_outputs"
     bl_label = "Detach Outputs"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -3253,16 +3285,16 @@ class NWDetachOutputs(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWLinkToOutputNode(Operator):
+class FWLinkToOutputNode(Operator):
     """Link to Composite node or Material Output node"""
-    bl_idname = "node.nw_link_out"
+    bl_idname = "node.fw_link_out"
     bl_label = "Connect to Output"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             if context.active_node is not None:
                 for out in context.active_node.outputs:
                     if is_visible_socket(out):
@@ -3324,9 +3356,9 @@ class NWLinkToOutputNode(Operator):
         return {'FINISHED'}
 
 
-class NWMakeLink(Operator, NWBase):
+class FWMakeLink(Operator, FWBase):
     """Make a link from one socket to another"""
-    bl_idname = 'node.nw_make_link'
+    bl_idname = 'node.fw_make_link'
     bl_label = 'Make Link'
     bl_options = {'REGISTER', 'UNDO'}
     from_socket: IntProperty()
@@ -3335,8 +3367,8 @@ class NWMakeLink(Operator, NWBase):
     def execute(self, context):
         nodes, links = get_nodes_links(context)
 
-        n1 = nodes[context.scene.NWLazySource]
-        n2 = nodes[context.scene.NWLazyTarget]
+        n1 = nodes[context.scene.FWLazySource]
+        n2 = nodes[context.scene.FWLazyTarget]
 
         links.new(n1.outputs[self.from_socket], n2.inputs[self.to_socket])
 
@@ -3345,9 +3377,9 @@ class NWMakeLink(Operator, NWBase):
         return {'FINISHED'}
 
 
-class NWCallInputsMenu(Operator, NWBase):
+class FWCallInputsMenu(Operator, FWBase):
     """Link from this output"""
-    bl_idname = 'node.nw_call_inputs_menu'
+    bl_idname = 'node.fw_call_inputs_menu'
     bl_label = 'Make Link'
     bl_options = {'REGISTER', 'UNDO'}
     from_socket: IntProperty()
@@ -3355,20 +3387,20 @@ class NWCallInputsMenu(Operator, NWBase):
     def execute(self, context):
         nodes, links = get_nodes_links(context)
 
-        context.scene.NWSourceSocket = self.from_socket
+        context.scene.FWSourceSocket = self.from_socket
 
-        n1 = nodes[context.scene.NWLazySource]
-        n2 = nodes[context.scene.NWLazyTarget]
+        n1 = nodes[context.scene.FWLazySource]
+        n2 = nodes[context.scene.FWLazyTarget]
         if len(n2.inputs) > 1:
-            bpy.ops.wm.call_menu("INVOKE_DEFAULT", name=NWConnectionListInputs.bl_idname)
+            bpy.ops.wm.call_menu("INVOKE_DEFAULT", name=FWConnectionListInputs.bl_idname)
         elif len(n2.inputs) == 1:
             links.new(n1.outputs[self.from_socket], n2.inputs[0])
         return {'FINISHED'}
 
 
-class NWAddSequence(Operator, NWBase, ImportHelper):
+class FWAddSequence(Operator, FWBase, ImportHelper):
     """Add an Image Sequence"""
-    bl_idname = 'node.nw_add_sequence'
+    bl_idname = 'node.fw_add_sequence'
     bl_label = 'Import Image Sequence'
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -3487,9 +3519,9 @@ class NWAddSequence(Operator, NWBase, ImportHelper):
         return {'FINISHED'}
 
 
-class NWAddMultipleImages(Operator, NWBase, ImportHelper):
+class FWAddMultipleImages(Operator, FWBase, ImportHelper):
     """Add multiple images at once"""
-    bl_idname = 'node.nw_add_multiple_images'
+    bl_idname = 'node.fw_add_multiple_images'
     bl_label = 'Open Selected Images'
     bl_options = {'REGISTER', 'UNDO'}
     directory: StringProperty(
@@ -3540,9 +3572,9 @@ class NWAddMultipleImages(Operator, NWBase, ImportHelper):
         return {'FINISHED'}
 
 
-class NWViewerFocus(bpy.types.Operator):
+class FWViewerFocus(bpy.types.Operator):
     """Set the viewer tile center to the mouse position"""
-    bl_idname = "node.nw_viewer_focus"
+    bl_idname = "node.fw_viewer_focus"
     bl_label = "Viewer Focus"
 
     x: bpy.props.IntProperty()
@@ -3550,7 +3582,7 @@ class NWViewerFocus(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return nw_check(context) and context.space_data.tree_type == 'CompositorNodeTree'
+        return fw_check(context) and context.space_data.tree_type == 'CompositorNodeTree'
 
     def execute(self, context):
         return {'FINISHED'}
@@ -3596,9 +3628,9 @@ class NWViewerFocus(bpy.types.Operator):
         return self.execute(context)
 
 
-class NWSaveViewer(bpy.types.Operator, ExportHelper):
+class FWSaveViewer(bpy.types.Operator, ExportHelper):
     """Save the current viewer node to an image file"""
-    bl_idname = "node.nw_save_viewer"
+    bl_idname = "node.fw_save_viewer"
     bl_label = "Save This Image"
     filepath: StringProperty(subtype="FILE_PATH")
     filename_ext: EnumProperty(
@@ -3621,7 +3653,7 @@ class NWSaveViewer(bpy.types.Operator, ExportHelper):
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             if context.space_data.tree_type == 'CompositorNodeTree':
                 if "Viewer Node" in [i.name for i in bpy.data.images]:
                     if sum(bpy.data.images["Viewer Node"].size) > 0:  # False if not connected or connected but no image
@@ -3656,9 +3688,9 @@ class NWSaveViewer(bpy.types.Operator, ExportHelper):
             return {'FINISHED'}
 
 
-class NWResetNodes(bpy.types.Operator):
+class FWResetNodes(bpy.types.Operator):
     """Reset Nodes in Selection"""
-    bl_idname = "node.nw_reset_nodes"
+    bl_idname = "node.fw_reset_nodes"
     bl_label = "Reset Nodes"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -3772,70 +3804,70 @@ def drawlayout(context, layout, mode='non-panel'):
     tree_type = context.space_data.tree_type
 
     col = layout.column(align=True)
-    col.menu(NWMergeNodesMenu.bl_idname)
+    col.menu(FWMergeNodesMenu.bl_idname)
     col.separator()
 
     col = layout.column(align=True)
-    col.menu(NWSwitchNodeTypeMenu.bl_idname, text="Switch Node Type")
+    col.menu(FWSwitchNodeTypeMenu.bl_idname, text="Switch Node Type")
     col.separator()
 
     if tree_type == 'ShaderNodeTree':
         col = layout.column(align=True)
-        col.operator(NWAddTextureSetup.bl_idname, text="Add Texture Setup", icon='NODE_SEL')
-        col.operator(NWAddPrincipledSetup.bl_idname, text="Add Principled Setup", icon='NODE_SEL')
+        col.operator(FWAddTextureSetup.bl_idname, text="Add Texture Setup", icon='NODE_SEL')
+        col.operator(FWAddPrincipledSetup.bl_idname, text="Add Principled Setup", icon='NODE_SEL')
         col.separator()
 
     col = layout.column(align=True)
-    col.operator(NWDetachOutputs.bl_idname, icon='UNLINKED')
-    col.operator(NWSwapLinks.bl_idname)
-    col.menu(NWAddReroutesMenu.bl_idname, text="Add Reroutes", icon='LAYER_USED')
+    col.operator(FWDetachOutputs.bl_idname, icon='UNLINKED')
+    col.operator(FWSwapLinks.bl_idname)
+    col.menu(FWAddReroutesMenu.bl_idname, text="Add Reroutes", icon='LAYER_USED')
     col.separator()
 
     col = layout.column(align=True)
-    col.menu(NWLinkActiveToSelectedMenu.bl_idname, text="Link Active To Selected", icon='LINKED')
+    col.menu(FWLinkActiveToSelectedMenu.bl_idname, text="Link Active To Selected", icon='LINKED')
     if tree_type != 'GeometryNodeTree':
-        col.operator(NWLinkToOutputNode.bl_idname, icon='DRIVER')
+        col.operator(FWLinkToOutputNode.bl_idname, icon='DRIVER')
     col.separator()
 
     col = layout.column(align=True)
     if mode == 'panel':
         row = col.row(align=True)
-        row.operator(NWClearLabel.bl_idname).option = True
-        row.operator(NWModifyLabels.bl_idname)
+        row.operator(FWClearLabel.bl_idname).option = True
+        row.operator(FWModifyLabels.bl_idname)
     else:
-        col.operator(NWClearLabel.bl_idname).option = True
-        col.operator(NWModifyLabels.bl_idname)
-    col.menu(NWBatchChangeNodesMenu.bl_idname, text="Batch Change")
+        col.operator(FWClearLabel.bl_idname).option = True
+        col.operator(FWModifyLabels.bl_idname)
+    col.menu(FWBatchChangeNodesMenu.bl_idname, text="Batch Change")
     col.separator()
-    col.menu(NWCopyToSelectedMenu.bl_idname, text="Copy to Selected")
+    col.menu(FWCopyToSelectedMenu.bl_idname, text="Copy to Selected")
     col.separator()
 
     col = layout.column(align=True)
     if tree_type == 'CompositorNodeTree':
-        col.operator(NWResetBG.bl_idname, icon='ZOOM_PREVIOUS')
+        col.operator(FWResetBG.bl_idname, icon='ZOOM_PREVIOUS')
     if tree_type != 'GeometryNodeTree':
-        col.operator(NWReloadImages.bl_idname, icon='FILE_REFRESH')
+        col.operator(FWReloadImages.bl_idname, icon='FILE_REFRESH')
     col.separator()
 
     col = layout.column(align=True)
-    col.operator(NWFrameSelected.bl_idname, icon='STICKY_UVS_LOC')
+    col.operator(FWFrameSelected.bl_idname, icon='STICKY_UVS_LOC')
     col.separator()
 
     col = layout.column(align=True)
-    col.operator(NWAlignNodes.bl_idname, icon='CENTER_ONLY')
+    col.operator(FWAlignNodes.bl_idname, icon='CENTER_ONLY')
     col.separator()
 
     col = layout.column(align=True)
-    col.operator(NWDeleteUnused.bl_idname, icon='CANCEL')
+    col.operator(FWDeleteUnused.bl_idname, icon='CANCEL')
     col.separator()
 
 
-class NodeWranglerPanel(Panel, NWBase):
-    bl_idname = "NODE_PT_nw_node_wrangler"
+class NodeWranglerPanel(Panel, FWBase):
+    bl_idname = "NODE_PT_fw_node_wrangler"
     bl_space_type = 'NODE_EDITOR'
-    bl_label = "Node Wrangler"
+    bl_label = "Forked Wrangler"
     bl_region_type = "UI"
-    bl_category = "Node Wrangler"
+    bl_category = "Forked Wrangler"
 
     prepend: StringProperty(
         name='prepend',
@@ -3851,96 +3883,96 @@ class NodeWranglerPanel(Panel, NWBase):
 #
 #  M E N U S
 #
-class NodeWranglerMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_node_wrangler_menu"
-    bl_label = "Node Wrangler"
+class NodeWranglerMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_node_wrangler_menu"
+    bl_label = "Forked Wrangler"
 
     def draw(self, context):
         self.layout.operator_context = 'INVOKE_DEFAULT'
         drawlayout(context, self.layout)
 
 
-class NWMergeNodesMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_merge_nodes_menu"
+class FWMergeNodesMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_merge_nodes_menu"
     bl_label = "Merge Selected Nodes"
 
     def draw(self, context):
         type = context.space_data.tree_type
         layout = self.layout
         if type == 'ShaderNodeTree':
-            layout.menu(NWMergeShadersMenu.bl_idname, text="Use Shaders")
+            layout.menu(FWMergeShadersMenu.bl_idname, text="Use Shaders")
         if type == 'GeometryNodeTree':
-            layout.menu(NWMergeGeometryMenu.bl_idname, text="Use Geometry Nodes")
-            layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
+            layout.menu(FWMergeGeometryMenu.bl_idname, text="Use Geometry Nodes")
+            layout.menu(FWMergeMathMenu.bl_idname, text="Use Math Nodes")
         else:
-            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Nodes")
-            layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
-            props = layout.operator(NWMergeNodes.bl_idname, text="Use Z-Combine Nodes")
+            layout.menu(FWMergeMixMenu.bl_idname, text="Use Mix Nodes")
+            layout.menu(FWMergeMathMenu.bl_idname, text="Use Math Nodes")
+            props = layout.operator(FWMergeNodes.bl_idname, text="Use Z-Combine Nodes")
             props.mode = 'MIX'
             props.merge_type = 'ZCOMBINE'
-            props = layout.operator(NWMergeNodes.bl_idname, text="Use Alpha Over Nodes")
+            props = layout.operator(FWMergeNodes.bl_idname, text="Use Alpha Over Nodes")
             props.mode = 'MIX'
             props.merge_type = 'ALPHAOVER'
 
-class NWMergeGeometryMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_merge_geometry_menu"
+class FWMergeGeometryMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_merge_geometry_menu"
     bl_label = "Merge Selected Nodes using Geometry Nodes"
     def draw(self, context):
         layout = self.layout
         # The boolean node + Join Geometry node
         for type, name, description in geo_combine_operations:
-            props = layout.operator(NWMergeNodes.bl_idname, text=name)
+            props = layout.operator(FWMergeNodes.bl_idname, text=name)
             props.mode = type
             props.merge_type = 'GEOMETRY'
 
-class NWMergeShadersMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_merge_shaders_menu"
+class FWMergeShadersMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_merge_shaders_menu"
     bl_label = "Merge Selected Nodes using Shaders"
 
     def draw(self, context):
         layout = self.layout
         for type in ('MIX', 'ADD'):
-            props = layout.operator(NWMergeNodes.bl_idname, text=type)
+            props = layout.operator(FWMergeNodes.bl_idname, text=type)
             props.mode = type
             props.merge_type = 'SHADER'
 
 
-class NWMergeMixMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_merge_mix_menu"
+class FWMergeMixMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_merge_mix_menu"
     bl_label = "Merge Selected Nodes using Mix"
 
     def draw(self, context):
         layout = self.layout
         for type, name, description in blend_types:
-            props = layout.operator(NWMergeNodes.bl_idname, text=name)
+            props = layout.operator(FWMergeNodes.bl_idname, text=name)
             props.mode = type
             props.merge_type = 'MIX'
 
 
-class NWConnectionListOutputs(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_connection_list_out"
+class FWConnectionListOutputs(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_connection_list_out"
     bl_label = "From:"
 
     def draw(self, context):
         layout = self.layout
         nodes, links = get_nodes_links(context)
 
-        n1 = nodes[context.scene.NWLazySource]
+        n1 = nodes[context.scene.FWLazySource]
         for index, output in enumerate(n1.outputs):
             # Only show sockets that are exposed.
             if output.enabled:
-                layout.operator(NWCallInputsMenu.bl_idname, text=output.name, icon="RADIOBUT_OFF").from_socket=index
+                layout.operator(FWCallInputsMenu.bl_idname, text=output.name, icon="RADIOBUT_OFF").from_socket=index
 
 
-class NWConnectionListInputs(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_connection_list_in"
+class FWConnectionListInputs(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_connection_list_in"
     bl_label = "To:"
 
     def draw(self, context):
         layout = self.layout
         nodes, links = get_nodes_links(context)
 
-        n2 = nodes[context.scene.NWLazyTarget]
+        n2 = nodes[context.scene.FWLazyTarget]
 
         for index, input in enumerate(n2.inputs):
             # Only show sockets that are exposed.
@@ -3948,157 +3980,157 @@ class NWConnectionListInputs(Menu, NWBase):
             # of the vector math node being added to the list when
             # the mode is not 'SCALE'.
             if input.enabled:
-                op = layout.operator(NWMakeLink.bl_idname, text=input.name, icon="FORWARD")
-                op.from_socket = context.scene.NWSourceSocket
+                op = layout.operator(FWMakeLink.bl_idname, text=input.name, icon="FORWARD")
+                op.from_socket = context.scene.FWSourceSocket
                 op.to_socket = index
 
 
-class NWMergeMathMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_merge_math_menu"
+class FWMergeMathMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_merge_math_menu"
     bl_label = "Merge Selected Nodes using Math"
 
     def draw(self, context):
         layout = self.layout
         for type, name, description in operations:
-            props = layout.operator(NWMergeNodes.bl_idname, text=name)
+            props = layout.operator(FWMergeNodes.bl_idname, text=name)
             props.mode = type
             props.merge_type = 'MATH'
 
 
-class NWBatchChangeNodesMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_batch_change_nodes_menu"
+class FWBatchChangeNodesMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_batch_change_nodes_menu"
     bl_label = "Batch Change Selected Nodes"
 
     def draw(self, context):
         layout = self.layout
-        layout.menu(NWBatchChangeBlendTypeMenu.bl_idname)
-        layout.menu(NWBatchChangeOperationMenu.bl_idname)
+        layout.menu(FWBatchChangeBlendTypeMenu.bl_idname)
+        layout.menu(FWBatchChangeOperationMenu.bl_idname)
 
 
-class NWBatchChangeBlendTypeMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_batch_change_blend_type_menu"
+class FWBatchChangeBlendTypeMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_batch_change_blend_type_menu"
     bl_label = "Batch Change Blend Type"
 
     def draw(self, context):
         layout = self.layout
         for type, name, description in blend_types:
-            props = layout.operator(NWBatchChangeNodes.bl_idname, text=name)
+            props = layout.operator(FWBatchChangeNodes.bl_idname, text=name)
             props.blend_type = type
             props.operation = 'CURRENT'
 
 
-class NWBatchChangeOperationMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_batch_change_operation_menu"
+class FWBatchChangeOperationMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_batch_change_operation_menu"
     bl_label = "Batch Change Math Operation"
 
     def draw(self, context):
         layout = self.layout
         for type, name, description in operations:
-            props = layout.operator(NWBatchChangeNodes.bl_idname, text=name)
+            props = layout.operator(FWBatchChangeNodes.bl_idname, text=name)
             props.blend_type = 'CURRENT'
             props.operation = type
 
 
-class NWCopyToSelectedMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_copy_node_properties_menu"
+class FWCopyToSelectedMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_copy_node_properties_menu"
     bl_label = "Copy to Selected"
 
     def draw(self, context):
         layout = self.layout
-        layout.operator(NWCopySettings.bl_idname, text="Settings from Active")
-        layout.menu(NWCopyLabelMenu.bl_idname)
+        layout.operator(FWCopySettings.bl_idname, text="Settings from Active")
+        layout.menu(FWCopyLabelMenu.bl_idname)
 
 
-class NWCopyLabelMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_copy_label_menu"
+class FWCopyLabelMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_copy_label_menu"
     bl_label = "Copy Label"
 
     def draw(self, context):
         layout = self.layout
-        layout.operator(NWCopyLabel.bl_idname, text="from Active Node's Label").option = 'FROM_ACTIVE'
-        layout.operator(NWCopyLabel.bl_idname, text="from Linked Node's Label").option = 'FROM_NODE'
-        layout.operator(NWCopyLabel.bl_idname, text="from Linked Output's Name").option = 'FROM_SOCKET'
+        layout.operator(FWCopyLabel.bl_idname, text="from Active Node's Label").option = 'FROM_ACTIVE'
+        layout.operator(FWCopyLabel.bl_idname, text="from Linked Node's Label").option = 'FROM_NODE'
+        layout.operator(FWCopyLabel.bl_idname, text="from Linked Output's Name").option = 'FROM_SOCKET'
 
 
-class NWAddReroutesMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_add_reroutes_menu"
+class FWAddReroutesMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_add_reroutes_menu"
     bl_label = "Add Reroutes"
     bl_description = "Add Reroute Nodes to Selected Nodes' Outputs"
 
     def draw(self, context):
         layout = self.layout
-        layout.operator(NWAddReroutes.bl_idname, text="to All Outputs").option = 'ALL'
-        layout.operator(NWAddReroutes.bl_idname, text="to Loose Outputs").option = 'LOOSE'
-        layout.operator(NWAddReroutes.bl_idname, text="to Linked Outputs").option = 'LINKED'
+        layout.operator(FWAddReroutes.bl_idname, text="to All Outputs").option = 'ALL'
+        layout.operator(FWAddReroutes.bl_idname, text="to Loose Outputs").option = 'LOOSE'
+        layout.operator(FWAddReroutes.bl_idname, text="to Linked Outputs").option = 'LINKED'
 
 
-class NWLinkActiveToSelectedMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_link_active_to_selected_menu"
+class FWLinkActiveToSelectedMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_link_active_to_selected_menu"
     bl_label = "Link Active to Selected"
 
     def draw(self, context):
         layout = self.layout
-        layout.menu(NWLinkStandardMenu.bl_idname)
-        layout.menu(NWLinkUseNodeNameMenu.bl_idname)
-        layout.menu(NWLinkUseOutputsNamesMenu.bl_idname)
+        layout.menu(FWLinkStandardMenu.bl_idname)
+        layout.menu(FWLinkUseNodeNameMenu.bl_idname)
+        layout.menu(FWLinkUseOutputsNamesMenu.bl_idname)
 
 
-class NWLinkStandardMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_link_standard_menu"
+class FWLinkStandardMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_link_standard_menu"
     bl_label = "To All Selected"
 
     def draw(self, context):
         layout = self.layout
-        props = layout.operator(NWLinkActiveToSelected.bl_idname, text="Don't Replace Links")
+        props = layout.operator(FWLinkActiveToSelected.bl_idname, text="Don't Replace Links")
         props.replace = False
         props.use_node_name = False
         props.use_outputs_names = False
-        props = layout.operator(NWLinkActiveToSelected.bl_idname, text="Replace Links")
+        props = layout.operator(FWLinkActiveToSelected.bl_idname, text="Replace Links")
         props.replace = True
         props.use_node_name = False
         props.use_outputs_names = False
 
 
-class NWLinkUseNodeNameMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_link_use_node_name_menu"
+class FWLinkUseNodeNameMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_link_use_node_name_menu"
     bl_label = "Use Node Name/Label"
 
     def draw(self, context):
         layout = self.layout
-        props = layout.operator(NWLinkActiveToSelected.bl_idname, text="Don't Replace Links")
+        props = layout.operator(FWLinkActiveToSelected.bl_idname, text="Don't Replace Links")
         props.replace = False
         props.use_node_name = True
         props.use_outputs_names = False
-        props = layout.operator(NWLinkActiveToSelected.bl_idname, text="Replace Links")
+        props = layout.operator(FWLinkActiveToSelected.bl_idname, text="Replace Links")
         props.replace = True
         props.use_node_name = True
         props.use_outputs_names = False
 
 
-class NWLinkUseOutputsNamesMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_link_use_outputs_names_menu"
+class FWLinkUseOutputsNamesMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_link_use_outputs_names_menu"
     bl_label = "Use Outputs Names"
 
     def draw(self, context):
         layout = self.layout
-        props = layout.operator(NWLinkActiveToSelected.bl_idname, text="Don't Replace Links")
+        props = layout.operator(FWLinkActiveToSelected.bl_idname, text="Don't Replace Links")
         props.replace = False
         props.use_node_name = False
         props.use_outputs_names = True
-        props = layout.operator(NWLinkActiveToSelected.bl_idname, text="Replace Links")
+        props = layout.operator(FWLinkActiveToSelected.bl_idname, text="Replace Links")
         props.replace = True
         props.use_node_name = False
         props.use_outputs_names = True
 
 
-class NWAttributeMenu(bpy.types.Menu):
-    bl_idname = "NODE_MT_nw_node_attribute_menu"
+class FWAttributeMenu(bpy.types.Menu):
+    bl_idname = "NODE_MT_fw_node_attribute_menu"
     bl_label = "Attributes"
 
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             snode = context.space_data
             valid = snode.tree_type == 'ShaderNodeTree'
         return valid
@@ -4122,13 +4154,13 @@ class NWAttributeMenu(bpy.types.Menu):
 
         if attrs:
             for attr in attrs:
-                l.operator(NWAddAttrNode.bl_idname, text=attr).attr_name = attr
+                l.operator(FWAddAttrNode.bl_idname, text=attr).attr_name = attr
         else:
             l.label(text="No attributes on objects with this material")
 
 
-class NWSwitchNodeTypeMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_switch_node_type_menu"
+class FWSwitchNodeTypeMenu(Menu, FWBase):
+    bl_idname = "NODE_MT_fw_switch_node_type_menu"
     bl_label = "Switch Type to..."
 
     def draw(self, context):
@@ -4136,12 +4168,12 @@ class NWSwitchNodeTypeMenu(Menu, NWBase):
         categories = [c for c in node_categories_iter(context)
                       if c.name not in ['Group', 'Script']]
         for cat in categories:
-            idname = f"NODE_MT_nw_switch_{cat.identifier}_submenu"
+            idname = f"NODE_MT_fw_switch_{cat.identifier}_submenu"
             if hasattr(bpy.types, idname):
                 layout.menu(idname)
             else:
                 layout.label(text="Unable to load altered node lists.")
-                layout.label(text="Please re-enable Node Wrangler.")
+                layout.label(text="Please re-enable Forked Wrangler.")
                 break
 
 
@@ -4150,14 +4182,14 @@ def draw_switch_category_submenu(self, context):
     if self.category.name == 'Layout':
         for node in self.category.items(context):
             if node.nodetype != 'NodeFrame':
-                props = layout.operator(NWSwitchNodeType.bl_idname, text=node.label)
+                props = layout.operator(FWSwitchNodeType.bl_idname, text=node.label)
                 props.to_type = node.nodetype
     else:
         for node in self.category.items(context):
             if isinstance(node, NodeItemCustom):
                 node.draw(self, layout, context)
                 continue
-            props = layout.operator(NWSwitchNodeType.bl_idname, text=node.label)
+            props = layout.operator(FWSwitchNodeType.bl_idname, text=node.label)
             props.to_type = node.nodetype
 
 #
@@ -4167,33 +4199,33 @@ def draw_switch_category_submenu(self, context):
 
 def select_parent_children_buttons(self, context):
     layout = self.layout
-    layout.operator(NWSelectParentChildren.bl_idname, text="Select frame's members (children)").option = 'CHILD'
-    layout.operator(NWSelectParentChildren.bl_idname, text="Select parent frame").option = 'PARENT'
+    layout.operator(FWSelectParentChildren.bl_idname, text="Select frame's members (children)").option = 'CHILD'
+    layout.operator(FWSelectParentChildren.bl_idname, text="Select parent frame").option = 'PARENT'
 
 
 def attr_nodes_menu_func(self, context):
     col = self.layout.column(align=True)
-    col.menu("NODE_MT_nw_node_attribute_menu")
+    col.menu("NODE_MT_fw_node_attribute_menu")
     col.separator()
 
 
 def multipleimages_menu_func(self, context):
     col = self.layout.column(align=True)
-    col.operator(NWAddMultipleImages.bl_idname, text="Multiple Images")
-    col.operator(NWAddSequence.bl_idname, text="Image Sequence")
+    col.operator(FWAddMultipleImages.bl_idname, text="Multiple Images")
+    col.operator(FWAddSequence.bl_idname, text="Image Sequence")
     col.separator()
 
 
 def bgreset_menu_func(self, context):
-    self.layout.operator(NWResetBG.bl_idname)
+    self.layout.operator(FWResetBG.bl_idname)
 
 
 def save_viewer_menu_func(self, context):
-    if nw_check(context):
+    if fw_check(context):
         if context.space_data.tree_type == 'CompositorNodeTree':
             if context.scene.node_tree.nodes.active:
                 if context.scene.node_tree.nodes.active.type == "VIEWER":
-                    self.layout.operator(NWSaveViewer.bl_idname, icon='FILE_IMAGE')
+                    self.layout.operator(FWSaveViewer.bl_idname, icon='FILE_IMAGE')
 
 
 def reset_nodes_button(self, context):
@@ -4204,12 +4236,12 @@ def reset_nodes_button(self, context):
     # Check if active node is in the selection and respective type
     if (len(node_selected) == 1) and node_active and node_active.select and node_active.type not in node_ignore:
         row = self.layout.row()
-        row.operator("node.nw_reset_nodes", text="Reset Node", icon="FILE_REFRESH")
+        row.operator("node.fw_reset_nodes", text="Reset Node", icon="FILE_REFRESH")
         self.layout.separator()
 
     elif (len(node_selected) == 1) and node_active and node_active.select and node_active.type == "FRAME":
         row = self.layout.row()
-        row.operator("node.nw_reset_nodes", text="Reset Nodes in Frame", icon="FILE_REFRESH")
+        row.operator("node.fw_reset_nodes", text="Reset Nodes in Frame", icon="FILE_REFRESH")
         self.layout.separator()
 
 
@@ -4222,269 +4254,269 @@ addon_keymaps = []
 # props entry: (property name, property value)
 kmi_defs = (
     # MERGE NODES
-    # NWMergeNodes with Ctrl (AUTO).
-    (NWMergeNodes.bl_idname, 'NUMPAD_0', 'PRESS', True, False, False,
+    # FWMergeNodes with Ctrl (AUTO).
+    (FWMergeNodes.bl_idname, 'NUMPAD_0', 'PRESS', True, False, False,
         (('mode', 'MIX'), ('merge_type', 'AUTO'),), "Merge Nodes (Automatic)"),
-    (NWMergeNodes.bl_idname, 'ZERO', 'PRESS', True, False, False,
+    (FWMergeNodes.bl_idname, 'ZERO', 'PRESS', True, False, False,
         (('mode', 'MIX'), ('merge_type', 'AUTO'),), "Merge Nodes (Automatic)"),
-    (NWMergeNodes.bl_idname, 'NUMPAD_PLUS', 'PRESS', True, False, False,
+    (FWMergeNodes.bl_idname, 'NUMPAD_PLUS', 'PRESS', True, False, False,
         (('mode', 'ADD'), ('merge_type', 'AUTO'),), "Merge Nodes (Add)"),
-    (NWMergeNodes.bl_idname, 'EQUAL', 'PRESS', True, False, False,
+    (FWMergeNodes.bl_idname, 'EQUAL', 'PRESS', True, False, False,
         (('mode', 'ADD'), ('merge_type', 'AUTO'),), "Merge Nodes (Add)"),
-    (NWMergeNodes.bl_idname, 'NUMPAD_ASTERIX', 'PRESS', True, False, False,
+    (FWMergeNodes.bl_idname, 'NUMPAD_ASTERIX', 'PRESS', True, False, False,
         (('mode', 'MULTIPLY'), ('merge_type', 'AUTO'),), "Merge Nodes (Multiply)"),
-    (NWMergeNodes.bl_idname, 'EIGHT', 'PRESS', True, False, False,
+    (FWMergeNodes.bl_idname, 'EIGHT', 'PRESS', True, False, False,
         (('mode', 'MULTIPLY'), ('merge_type', 'AUTO'),), "Merge Nodes (Multiply)"),
-    (NWMergeNodes.bl_idname, 'NUMPAD_MINUS', 'PRESS', True, False, False,
+    (FWMergeNodes.bl_idname, 'NUMPAD_MINUS', 'PRESS', True, False, False,
         (('mode', 'SUBTRACT'), ('merge_type', 'AUTO'),), "Merge Nodes (Subtract)"),
-    (NWMergeNodes.bl_idname, 'MINUS', 'PRESS', True, False, False,
+    (FWMergeNodes.bl_idname, 'MINUS', 'PRESS', True, False, False,
         (('mode', 'SUBTRACT'), ('merge_type', 'AUTO'),), "Merge Nodes (Subtract)"),
-    (NWMergeNodes.bl_idname, 'NUMPAD_SLASH', 'PRESS', True, False, False,
+    (FWMergeNodes.bl_idname, 'NUMPAD_SLASH', 'PRESS', True, False, False,
         (('mode', 'DIVIDE'), ('merge_type', 'AUTO'),), "Merge Nodes (Divide)"),
-    (NWMergeNodes.bl_idname, 'SLASH', 'PRESS', True, False, False,
+    (FWMergeNodes.bl_idname, 'SLASH', 'PRESS', True, False, False,
         (('mode', 'DIVIDE'), ('merge_type', 'AUTO'),), "Merge Nodes (Divide)"),
-    (NWMergeNodes.bl_idname, 'COMMA', 'PRESS', True, False, False,
+    (FWMergeNodes.bl_idname, 'COMMA', 'PRESS', True, False, False,
         (('mode', 'LESS_THAN'), ('merge_type', 'MATH'),), "Merge Nodes (Less than)"),
-    (NWMergeNodes.bl_idname, 'PERIOD', 'PRESS', True, False, False,
+    (FWMergeNodes.bl_idname, 'PERIOD', 'PRESS', True, False, False,
         (('mode', 'GREATER_THAN'), ('merge_type', 'MATH'),), "Merge Nodes (Greater than)"),
-    (NWMergeNodes.bl_idname, 'NUMPAD_PERIOD', 'PRESS', True, False, False,
+    (FWMergeNodes.bl_idname, 'NUMPAD_PERIOD', 'PRESS', True, False, False,
         (('mode', 'MIX'), ('merge_type', 'ZCOMBINE'),), "Merge Nodes (Z-Combine)"),
-    # NWMergeNodes with Ctrl Alt (MIX or ALPHAOVER)
-    (NWMergeNodes.bl_idname, 'NUMPAD_0', 'PRESS', True, False, True,
+    # FWMergeNodes with Ctrl Alt (MIX or ALPHAOVER)
+    (FWMergeNodes.bl_idname, 'NUMPAD_0', 'PRESS', True, False, True,
         (('mode', 'MIX'), ('merge_type', 'ALPHAOVER'),), "Merge Nodes (Alpha Over)"),
-    (NWMergeNodes.bl_idname, 'ZERO', 'PRESS', True, False, True,
+    (FWMergeNodes.bl_idname, 'ZERO', 'PRESS', True, False, True,
         (('mode', 'MIX'), ('merge_type', 'ALPHAOVER'),), "Merge Nodes (Alpha Over)"),
-    (NWMergeNodes.bl_idname, 'NUMPAD_PLUS', 'PRESS', True, False, True,
+    (FWMergeNodes.bl_idname, 'NUMPAD_PLUS', 'PRESS', True, False, True,
         (('mode', 'ADD'), ('merge_type', 'MIX'),), "Merge Nodes (Color, Add)"),
-    (NWMergeNodes.bl_idname, 'EQUAL', 'PRESS', True, False, True,
+    (FWMergeNodes.bl_idname, 'EQUAL', 'PRESS', True, False, True,
         (('mode', 'ADD'), ('merge_type', 'MIX'),), "Merge Nodes (Color, Add)"),
-    (NWMergeNodes.bl_idname, 'NUMPAD_ASTERIX', 'PRESS', True, False, True,
+    (FWMergeNodes.bl_idname, 'NUMPAD_ASTERIX', 'PRESS', True, False, True,
         (('mode', 'MULTIPLY'), ('merge_type', 'MIX'),), "Merge Nodes (Color, Multiply)"),
-    (NWMergeNodes.bl_idname, 'EIGHT', 'PRESS', True, False, True,
+    (FWMergeNodes.bl_idname, 'EIGHT', 'PRESS', True, False, True,
         (('mode', 'MULTIPLY'), ('merge_type', 'MIX'),), "Merge Nodes (Color, Multiply)"),
-    (NWMergeNodes.bl_idname, 'NUMPAD_MINUS', 'PRESS', True, False, True,
+    (FWMergeNodes.bl_idname, 'NUMPAD_MINUS', 'PRESS', True, False, True,
         (('mode', 'SUBTRACT'), ('merge_type', 'MIX'),), "Merge Nodes (Color, Subtract)"),
-    (NWMergeNodes.bl_idname, 'MINUS', 'PRESS', True, False, True,
+    (FWMergeNodes.bl_idname, 'MINUS', 'PRESS', True, False, True,
         (('mode', 'SUBTRACT'), ('merge_type', 'MIX'),), "Merge Nodes (Color, Subtract)"),
-    (NWMergeNodes.bl_idname, 'NUMPAD_SLASH', 'PRESS', True, False, True,
+    (FWMergeNodes.bl_idname, 'NUMPAD_SLASH', 'PRESS', True, False, True,
         (('mode', 'DIVIDE'), ('merge_type', 'MIX'),), "Merge Nodes (Color, Divide)"),
-    (NWMergeNodes.bl_idname, 'SLASH', 'PRESS', True, False, True,
+    (FWMergeNodes.bl_idname, 'SLASH', 'PRESS', True, False, True,
         (('mode', 'DIVIDE'), ('merge_type', 'MIX'),), "Merge Nodes (Color, Divide)"),
-    # NWMergeNodes with Ctrl Shift (MATH)
-    (NWMergeNodes.bl_idname, 'NUMPAD_PLUS', 'PRESS', True, True, False,
+    # FWMergeNodes with Ctrl Shift (MATH)
+    (FWMergeNodes.bl_idname, 'NUMPAD_PLUS', 'PRESS', True, True, False,
         (('mode', 'ADD'), ('merge_type', 'MATH'),), "Merge Nodes (Math, Add)"),
-    (NWMergeNodes.bl_idname, 'EQUAL', 'PRESS', True, True, False,
+    (FWMergeNodes.bl_idname, 'EQUAL', 'PRESS', True, True, False,
         (('mode', 'ADD'), ('merge_type', 'MATH'),), "Merge Nodes (Math, Add)"),
-    (NWMergeNodes.bl_idname, 'NUMPAD_ASTERIX', 'PRESS', True, True, False,
+    (FWMergeNodes.bl_idname, 'NUMPAD_ASTERIX', 'PRESS', True, True, False,
         (('mode', 'MULTIPLY'), ('merge_type', 'MATH'),), "Merge Nodes (Math, Multiply)"),
-    (NWMergeNodes.bl_idname, 'EIGHT', 'PRESS', True, True, False,
+    (FWMergeNodes.bl_idname, 'EIGHT', 'PRESS', True, True, False,
         (('mode', 'MULTIPLY'), ('merge_type', 'MATH'),), "Merge Nodes (Math, Multiply)"),
-    (NWMergeNodes.bl_idname, 'NUMPAD_MINUS', 'PRESS', True, True, False,
+    (FWMergeNodes.bl_idname, 'NUMPAD_MINUS', 'PRESS', True, True, False,
         (('mode', 'SUBTRACT'), ('merge_type', 'MATH'),), "Merge Nodes (Math, Subtract)"),
-    (NWMergeNodes.bl_idname, 'MINUS', 'PRESS', True, True, False,
+    (FWMergeNodes.bl_idname, 'MINUS', 'PRESS', True, True, False,
         (('mode', 'SUBTRACT'), ('merge_type', 'MATH'),), "Merge Nodes (Math, Subtract)"),
-    (NWMergeNodes.bl_idname, 'NUMPAD_SLASH', 'PRESS', True, True, False,
+    (FWMergeNodes.bl_idname, 'NUMPAD_SLASH', 'PRESS', True, True, False,
         (('mode', 'DIVIDE'), ('merge_type', 'MATH'),), "Merge Nodes (Math, Divide)"),
-    (NWMergeNodes.bl_idname, 'SLASH', 'PRESS', True, True, False,
+    (FWMergeNodes.bl_idname, 'SLASH', 'PRESS', True, True, False,
         (('mode', 'DIVIDE'), ('merge_type', 'MATH'),), "Merge Nodes (Math, Divide)"),
-    (NWMergeNodes.bl_idname, 'COMMA', 'PRESS', True, True, False,
+    (FWMergeNodes.bl_idname, 'COMMA', 'PRESS', True, True, False,
         (('mode', 'LESS_THAN'), ('merge_type', 'MATH'),), "Merge Nodes (Math, Less than)"),
-    (NWMergeNodes.bl_idname, 'PERIOD', 'PRESS', True, True, False,
+    (FWMergeNodes.bl_idname, 'PERIOD', 'PRESS', True, True, False,
         (('mode', 'GREATER_THAN'), ('merge_type', 'MATH'),), "Merge Nodes (Math, Greater than)"),
     # BATCH CHANGE NODES
-    # NWBatchChangeNodes with Alt
-    (NWBatchChangeNodes.bl_idname, 'NUMPAD_0', 'PRESS', False, False, True,
+    # FWBatchChangeNodes with Alt
+    (FWBatchChangeNodes.bl_idname, 'NUMPAD_0', 'PRESS', False, False, True,
         (('blend_type', 'MIX'), ('operation', 'CURRENT'),), "Batch change blend type (Mix)"),
-    (NWBatchChangeNodes.bl_idname, 'ZERO', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'ZERO', 'PRESS', False, False, True,
         (('blend_type', 'MIX'), ('operation', 'CURRENT'),), "Batch change blend type (Mix)"),
-    (NWBatchChangeNodes.bl_idname, 'NUMPAD_PLUS', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'NUMPAD_PLUS', 'PRESS', False, False, True,
         (('blend_type', 'ADD'), ('operation', 'ADD'),), "Batch change blend type (Add)"),
-    (NWBatchChangeNodes.bl_idname, 'EQUAL', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'EQUAL', 'PRESS', False, False, True,
         (('blend_type', 'ADD'), ('operation', 'ADD'),), "Batch change blend type (Add)"),
-    (NWBatchChangeNodes.bl_idname, 'NUMPAD_ASTERIX', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'NUMPAD_ASTERIX', 'PRESS', False, False, True,
         (('blend_type', 'MULTIPLY'), ('operation', 'MULTIPLY'),), "Batch change blend type (Multiply)"),
-    (NWBatchChangeNodes.bl_idname, 'EIGHT', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'EIGHT', 'PRESS', False, False, True,
         (('blend_type', 'MULTIPLY'), ('operation', 'MULTIPLY'),), "Batch change blend type (Multiply)"),
-    (NWBatchChangeNodes.bl_idname, 'NUMPAD_MINUS', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'NUMPAD_MINUS', 'PRESS', False, False, True,
         (('blend_type', 'SUBTRACT'), ('operation', 'SUBTRACT'),), "Batch change blend type (Subtract)"),
-    (NWBatchChangeNodes.bl_idname, 'MINUS', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'MINUS', 'PRESS', False, False, True,
         (('blend_type', 'SUBTRACT'), ('operation', 'SUBTRACT'),), "Batch change blend type (Subtract)"),
-    (NWBatchChangeNodes.bl_idname, 'NUMPAD_SLASH', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'NUMPAD_SLASH', 'PRESS', False, False, True,
         (('blend_type', 'DIVIDE'), ('operation', 'DIVIDE'),), "Batch change blend type (Divide)"),
-    (NWBatchChangeNodes.bl_idname, 'SLASH', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'SLASH', 'PRESS', False, False, True,
         (('blend_type', 'DIVIDE'), ('operation', 'DIVIDE'),), "Batch change blend type (Divide)"),
-    (NWBatchChangeNodes.bl_idname, 'COMMA', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'COMMA', 'PRESS', False, False, True,
         (('blend_type', 'CURRENT'), ('operation', 'LESS_THAN'),), "Batch change blend type (Current)"),
-    (NWBatchChangeNodes.bl_idname, 'PERIOD', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'PERIOD', 'PRESS', False, False, True,
         (('blend_type', 'CURRENT'), ('operation', 'GREATER_THAN'),), "Batch change blend type (Current)"),
-    (NWBatchChangeNodes.bl_idname, 'DOWN_ARROW', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'DOWN_ARROW', 'PRESS', False, False, True,
         (('blend_type', 'NEXT'), ('operation', 'NEXT'),), "Batch change blend type (Next)"),
-    (NWBatchChangeNodes.bl_idname, 'UP_ARROW', 'PRESS', False, False, True,
+    (FWBatchChangeNodes.bl_idname, 'UP_ARROW', 'PRESS', False, False, True,
         (('blend_type', 'PREV'), ('operation', 'PREV'),), "Batch change blend type (Previous)"),
     # LINK ACTIVE TO SELECTED
     # Don't use names, don't replace links (K)
-    (NWLinkActiveToSelected.bl_idname, 'K', 'PRESS', False, False, False,
+    (FWLinkActiveToSelected.bl_idname, 'K', 'PRESS', False, False, False,
         (('replace', False), ('use_node_name', False), ('use_outputs_names', False),), "Link active to selected (Don't replace links)"),
     # Don't use names, replace links (Shift K)
-    (NWLinkActiveToSelected.bl_idname, 'K', 'PRESS', False, True, False,
+    (FWLinkActiveToSelected.bl_idname, 'K', 'PRESS', False, True, False,
         (('replace', True), ('use_node_name', False), ('use_outputs_names', False),), "Link active to selected (Replace links)"),
     # Use node name, don't replace links (')
-    (NWLinkActiveToSelected.bl_idname, 'QUOTE', 'PRESS', False, False, False,
+    (FWLinkActiveToSelected.bl_idname, 'QUOTE', 'PRESS', False, False, False,
         (('replace', False), ('use_node_name', True), ('use_outputs_names', False),), "Link active to selected (Don't replace links, node names)"),
     # Use node name, replace links (Shift ')
-    (NWLinkActiveToSelected.bl_idname, 'QUOTE', 'PRESS', False, True, False,
+    (FWLinkActiveToSelected.bl_idname, 'QUOTE', 'PRESS', False, True, False,
         (('replace', True), ('use_node_name', True), ('use_outputs_names', False),), "Link active to selected (Replace links, node names)"),
     # Don't use names, don't replace links (;)
-    (NWLinkActiveToSelected.bl_idname, 'SEMI_COLON', 'PRESS', False, False, False,
+    (FWLinkActiveToSelected.bl_idname, 'SEMI_COLON', 'PRESS', False, False, False,
         (('replace', False), ('use_node_name', False), ('use_outputs_names', True),), "Link active to selected (Don't replace links, output names)"),
     # Don't use names, replace links (')
-    (NWLinkActiveToSelected.bl_idname, 'SEMI_COLON', 'PRESS', False, True, False,
+    (FWLinkActiveToSelected.bl_idname, 'SEMI_COLON', 'PRESS', False, True, False,
         (('replace', True), ('use_node_name', False), ('use_outputs_names', True),), "Link active to selected (Replace links, output names)"),
     # CHANGE MIX FACTOR
-    (NWChangeMixFactor.bl_idname, 'LEFT_ARROW', 'PRESS', False, False, True, (('option', -0.1),), "Reduce Mix Factor by 0.1"),
-    (NWChangeMixFactor.bl_idname, 'RIGHT_ARROW', 'PRESS', False, False, True, (('option', 0.1),), "Increase Mix Factor by 0.1"),
-    (NWChangeMixFactor.bl_idname, 'LEFT_ARROW', 'PRESS', False, True, True, (('option', -0.01),), "Reduce Mix Factor by 0.01"),
-    (NWChangeMixFactor.bl_idname, 'RIGHT_ARROW', 'PRESS', False, True, True, (('option', 0.01),), "Increase Mix Factor by 0.01"),
-    (NWChangeMixFactor.bl_idname, 'LEFT_ARROW', 'PRESS', True, True, True, (('option', 0.0),), "Set Mix Factor to 0.0"),
-    (NWChangeMixFactor.bl_idname, 'RIGHT_ARROW', 'PRESS', True, True, True, (('option', 1.0),), "Set Mix Factor to 1.0"),
-    (NWChangeMixFactor.bl_idname, 'NUMPAD_0', 'PRESS', True, True, True, (('option', 0.0),), "Set Mix Factor to 0.0"),
-    (NWChangeMixFactor.bl_idname, 'ZERO', 'PRESS', True, True, True, (('option', 0.0),), "Set Mix Factor to 0.0"),
-    (NWChangeMixFactor.bl_idname, 'NUMPAD_1', 'PRESS', True, True, True, (('option', 1.0),), "Mix Factor to 1.0"),
-    (NWChangeMixFactor.bl_idname, 'ONE', 'PRESS', True, True, True, (('option', 1.0),), "Set Mix Factor to 1.0"),
+    (FWChangeMixFactor.bl_idname, 'LEFT_ARROW', 'PRESS', False, False, True, (('option', -0.1),), "Reduce Mix Factor by 0.1"),
+    (FWChangeMixFactor.bl_idname, 'RIGHT_ARROW', 'PRESS', False, False, True, (('option', 0.1),), "Increase Mix Factor by 0.1"),
+    (FWChangeMixFactor.bl_idname, 'LEFT_ARROW', 'PRESS', False, True, True, (('option', -0.01),), "Reduce Mix Factor by 0.01"),
+    (FWChangeMixFactor.bl_idname, 'RIGHT_ARROW', 'PRESS', False, True, True, (('option', 0.01),), "Increase Mix Factor by 0.01"),
+    (FWChangeMixFactor.bl_idname, 'LEFT_ARROW', 'PRESS', True, True, True, (('option', 0.0),), "Set Mix Factor to 0.0"),
+    (FWChangeMixFactor.bl_idname, 'RIGHT_ARROW', 'PRESS', True, True, True, (('option', 1.0),), "Set Mix Factor to 1.0"),
+    (FWChangeMixFactor.bl_idname, 'NUMPAD_0', 'PRESS', True, True, True, (('option', 0.0),), "Set Mix Factor to 0.0"),
+    (FWChangeMixFactor.bl_idname, 'ZERO', 'PRESS', True, True, True, (('option', 0.0),), "Set Mix Factor to 0.0"),
+    (FWChangeMixFactor.bl_idname, 'NUMPAD_1', 'PRESS', True, True, True, (('option', 1.0),), "Mix Factor to 1.0"),
+    (FWChangeMixFactor.bl_idname, 'ONE', 'PRESS', True, True, True, (('option', 1.0),), "Set Mix Factor to 1.0"),
     # CLEAR LABEL (Alt L)
-    (NWClearLabel.bl_idname, 'L', 'PRESS', False, False, True, (('option', False),), "Clear node labels"),
+    (FWClearLabel.bl_idname, 'L', 'PRESS', False, False, True, (('option', False),), "Clear node labels"),
     # MODIFY LABEL (Alt Shift L)
-    (NWModifyLabels.bl_idname, 'L', 'PRESS', False, True, True, None, "Modify node labels"),
+    (FWModifyLabels.bl_idname, 'L', 'PRESS', False, True, True, None, "Modify node labels"),
     # Copy Label from active to selected
-    (NWCopyLabel.bl_idname, 'V', 'PRESS', False, True, False, (('option', 'FROM_ACTIVE'),), "Copy label from active to selected"),
+    (FWCopyLabel.bl_idname, 'V', 'PRESS', False, True, False, (('option', 'FROM_ACTIVE'),), "Copy label from active to selected"),
     # DETACH OUTPUTS (Alt Shift D)
-    (NWDetachOutputs.bl_idname, 'D', 'PRESS', False, True, True, None, "Detach outputs"),
+    (FWDetachOutputs.bl_idname, 'D', 'PRESS', False, True, True, None, "Detach outputs"),
     # LINK TO OUTPUT NODE (O)
-    (NWLinkToOutputNode.bl_idname, 'O', 'PRESS', False, False, False, None, "Link to output node"),
+    (FWLinkToOutputNode.bl_idname, 'O', 'PRESS', False, False, False, None, "Link to output node"),
     # SELECT PARENT/CHILDREN
     # Select Children
-    (NWSelectParentChildren.bl_idname, 'RIGHT_BRACKET', 'PRESS', False, False, False, (('option', 'CHILD'),), "Select children"),
+    (FWSelectParentChildren.bl_idname, 'RIGHT_BRACKET', 'PRESS', False, False, False, (('option', 'CHILD'),), "Select children"),
     # Select Parent
-    (NWSelectParentChildren.bl_idname, 'LEFT_BRACKET', 'PRESS', False, False, False, (('option', 'PARENT'),), "Select Parent"),
+    (FWSelectParentChildren.bl_idname, 'LEFT_BRACKET', 'PRESS', False, False, False, (('option', 'PARENT'),), "Select Parent"),
     # Add Texture Setup
-    (NWAddTextureSetup.bl_idname, 'T', 'PRESS', True, False, False, None, "Add texture setup"),
+    (FWAddTextureSetup.bl_idname, 'T', 'PRESS', True, False, False, None, "Add texture setup"),
     # Add Principled BSDF Texture Setup
-    (NWAddPrincipledSetup.bl_idname, 'T', 'PRESS', True, True, False, None, "Add Principled texture setup"),
+    (FWAddPrincipledSetup.bl_idname, 'T', 'PRESS', True, True, False, None, "Add Principled texture setup"),
     # Reset backdrop
-    (NWResetBG.bl_idname, 'Z', 'PRESS', False, False, False, None, "Reset backdrop image zoom"),
+    (FWResetBG.bl_idname, 'Z', 'PRESS', False, False, False, None, "Reset backdrop image zoom"),
     # Delete unused
-    (NWDeleteUnused.bl_idname, 'X', 'PRESS', False, False, True, None, "Delete unused nodes"),
+    (FWDeleteUnused.bl_idname, 'X', 'PRESS', False, False, True, None, "Delete unused nodes"),
     # Frame Selected
-    (NWFrameSelected.bl_idname, 'P', 'PRESS', False, True, False, None, "Frame selected nodes"),
+    (FWFrameSelected.bl_idname, 'P', 'PRESS', False, True, False, None, "Frame selected nodes"),
     # Swap Links
-    (NWSwapLinks.bl_idname, 'S', 'PRESS', False, False, True, None, "Swap Links"),
+    (FWSwapLinks.bl_idname, 'S', 'PRESS', False, False, True, None, "Swap Links"),
     # Preview Node
-    (NWPreviewNode.bl_idname, 'LEFTMOUSE', 'PRESS', True, True, False, (('run_in_geometry_nodes', False),), "Preview node output"),
-    (NWPreviewNode.bl_idname, 'LEFTMOUSE', 'PRESS', False, True, True, (('run_in_geometry_nodes', True),), "Preview node output"),
+    (FWPreviewNode.bl_idname, 'LEFTMOUSE', 'PRESS', True, True, False, (('run_in_geometry_nodes', False),), "Preview node output"),
+    (FWPreviewNode.bl_idname, 'LEFTMOUSE', 'PRESS', False, True, True, (('run_in_geometry_nodes', True),), "Preview node output"),
     # Reload Images
-    (NWReloadImages.bl_idname, 'R', 'PRESS', False, False, True, None, "Reload images"),
+    (FWReloadImages.bl_idname, 'R', 'PRESS', False, False, True, None, "Reload images"),
     # Lazy Mix
-    (NWLazyMix.bl_idname, 'RIGHTMOUSE', 'PRESS', True, True, False, None, "Lazy Mix"),
+    (FWLazyMix.bl_idname, 'RIGHTMOUSE', 'PRESS', True, True, False, None, "Lazy Mix"),
     # Lazy Connect
-    (NWLazyConnect.bl_idname, 'RIGHTMOUSE', 'PRESS', False, False, True, (('with_menu', False),), "Lazy Connect"),
+    (FWLazyConnect.bl_idname, 'RIGHTMOUSE', 'PRESS', False, False, True, (('with_menu', False),), "Lazy Connect"),
     # Lazy Connect with Menu
-    (NWLazyConnect.bl_idname, 'RIGHTMOUSE', 'PRESS', False, True, True, (('with_menu', True),), "Lazy Connect with Socket Menu"),
+    (FWLazyConnect.bl_idname, 'RIGHTMOUSE', 'PRESS', False, True, True, (('with_menu', True),), "Lazy Connect with Socket Menu"),
     # Viewer Tile Center
-    (NWViewerFocus.bl_idname, 'LEFTMOUSE', 'DOUBLE_CLICK', False, False, False, None, "Set Viewers Tile Center"),
+    (FWViewerFocus.bl_idname, 'LEFTMOUSE', 'DOUBLE_CLICK', False, False, False, None, "Set Viewers Tile Center"),
     # Align Nodes
-    (NWAlignNodes.bl_idname, 'EQUAL', 'PRESS', False, True, False, None, "Align selected nodes neatly in a row/column"),
+    (FWAlignNodes.bl_idname, 'EQUAL', 'PRESS', False, True, False, None, "Align selected nodes neatly in a row/column"),
     # Reset Nodes (Back Space)
-    (NWResetNodes.bl_idname, 'BACK_SPACE', 'PRESS', False, False, False, None, "Revert node back to default state, but keep connections"),
+    (FWResetNodes.bl_idname, 'BACK_SPACE', 'PRESS', False, False, False, None, "Revert node back to default state, but keep connections"),
     # MENUS
-    ('wm.call_menu', 'W', 'PRESS', False, True, False, (('name', NodeWranglerMenu.bl_idname),), "Node Wrangler menu"),
-    ('wm.call_menu', 'SLASH', 'PRESS', False, False, False, (('name', NWAddReroutesMenu.bl_idname),), "Add Reroutes menu"),
-    ('wm.call_menu', 'NUMPAD_SLASH', 'PRESS', False, False, False, (('name', NWAddReroutesMenu.bl_idname),), "Add Reroutes menu"),
-    ('wm.call_menu', 'BACK_SLASH', 'PRESS', False, False, False, (('name', NWLinkActiveToSelectedMenu.bl_idname),), "Link active to selected (menu)"),
-    ('wm.call_menu', 'C', 'PRESS', False, True, False, (('name', NWCopyToSelectedMenu.bl_idname),), "Copy to selected (menu)"),
-    ('wm.call_menu', 'S', 'PRESS', False, True, False, (('name', NWSwitchNodeTypeMenu.bl_idname),), "Switch node type menu"),
+    ('wm.call_menu', 'W', 'PRESS', False, True, False, (('name', NodeWranglerMenu.bl_idname),), "Forked Wrangler menu"),
+    ('wm.call_menu', 'SLASH', 'PRESS', False, False, False, (('name', FWAddReroutesMenu.bl_idname),), "Add Reroutes menu"),
+    ('wm.call_menu', 'NUMPAD_SLASH', 'PRESS', False, False, False, (('name', FWAddReroutesMenu.bl_idname),), "Add Reroutes menu"),
+    ('wm.call_menu', 'BACK_SLASH', 'PRESS', False, False, False, (('name', FWLinkActiveToSelectedMenu.bl_idname),), "Link active to selected (menu)"),
+    ('wm.call_menu', 'C', 'PRESS', False, True, False, (('name', FWCopyToSelectedMenu.bl_idname),), "Copy to selected (menu)"),
+    ('wm.call_menu', 'S', 'PRESS', False, True, False, (('name', FWSwitchNodeTypeMenu.bl_idname),), "Switch node type menu"),
 )
 
 
 classes = (
-    NWPrincipledPreferences,
-    NWNodeWrangler,
-    NWLazyMix,
-    NWLazyConnect,
-    NWDeleteUnused,
-    NWSwapLinks,
-    NWResetBG,
-    NWAddAttrNode,
-    NWPreviewNode,
-    NWFrameSelected,
-    NWReloadImages,
-    NWSwitchNodeType,
-    NWMergeNodes,
-    NWBatchChangeNodes,
-    NWChangeMixFactor,
-    NWCopySettings,
-    NWCopyLabel,
-    NWClearLabel,
-    NWModifyLabels,
-    NWAddTextureSetup,
-    NWAddPrincipledSetup,
-    NWAddReroutes,
-    NWLinkActiveToSelected,
-    NWAlignNodes,
-    NWSelectParentChildren,
-    NWDetachOutputs,
-    NWLinkToOutputNode,
-    NWMakeLink,
-    NWCallInputsMenu,
-    NWAddSequence,
-    NWAddMultipleImages,
-    NWViewerFocus,
-    NWSaveViewer,
-    NWResetNodes,
+    FWPrincipledPreferences,
+    FWNodeWrangler,
+    FWLazyMix,
+    FWLazyConnect,
+    FWDeleteUnused,
+    FWSwapLinks,
+    FWResetBG,
+    FWAddAttrNode,
+    FWPreviewNode,
+    FWFrameSelected,
+    FWReloadImages,
+    FWSwitchNodeType,
+    FWMergeNodes,
+    FWBatchChangeNodes,
+    FWChangeMixFactor,
+    FWCopySettings,
+    FWCopyLabel,
+    FWClearLabel,
+    FWModifyLabels,
+    FWAddTextureSetup,
+    FWAddPrincipledSetup,
+    FWAddReroutes,
+    FWLinkActiveToSelected,
+    FWAlignNodes,
+    FWSelectParentChildren,
+    FWDetachOutputs,
+    FWLinkToOutputNode,
+    FWMakeLink,
+    FWCallInputsMenu,
+    FWAddSequence,
+    FWAddMultipleImages,
+    FWViewerFocus,
+    FWSaveViewer,
+    FWResetNodes,
     NodeWranglerPanel,
     NodeWranglerMenu,
-    NWMergeNodesMenu,
-    NWMergeShadersMenu,
-    NWMergeGeometryMenu,
-    NWMergeMixMenu,
-    NWConnectionListOutputs,
-    NWConnectionListInputs,
-    NWMergeMathMenu,
-    NWBatchChangeNodesMenu,
-    NWBatchChangeBlendTypeMenu,
-    NWBatchChangeOperationMenu,
-    NWCopyToSelectedMenu,
-    NWCopyLabelMenu,
-    NWAddReroutesMenu,
-    NWLinkActiveToSelectedMenu,
-    NWLinkStandardMenu,
-    NWLinkUseNodeNameMenu,
-    NWLinkUseOutputsNamesMenu,
-    NWAttributeMenu,
-    NWSwitchNodeTypeMenu,
+    FWMergeNodesMenu,
+    FWMergeShadersMenu,
+    FWMergeGeometryMenu,
+    FWMergeMixMenu,
+    FWConnectionListOutputs,
+    FWConnectionListInputs,
+    FWMergeMathMenu,
+    FWBatchChangeNodesMenu,
+    FWBatchChangeBlendTypeMenu,
+    FWBatchChangeOperationMenu,
+    FWCopyToSelectedMenu,
+    FWCopyLabelMenu,
+    FWAddReroutesMenu,
+    FWLinkActiveToSelectedMenu,
+    FWLinkStandardMenu,
+    FWLinkUseNodeNameMenu,
+    FWLinkUseOutputsNamesMenu,
+    FWAttributeMenu,
+    FWSwitchNodeTypeMenu,
 )
 
 def register():
     from bpy.utils import register_class
 
     # props
-    bpy.types.Scene.NWBusyDrawing = StringProperty(
+    bpy.types.Scene.FWBusyDrawing = StringProperty(
         name="Busy Drawing!",
         default="",
         description="An internal property used to store only the first mouse position")
-    bpy.types.Scene.NWLazySource = StringProperty(
+    bpy.types.Scene.FWLazySource = StringProperty(
         name="Lazy Source!",
         default="x",
         description="An internal property used to store the first node in a Lazy Connect operation")
-    bpy.types.Scene.NWLazyTarget = StringProperty(
+    bpy.types.Scene.FWLazyTarget = StringProperty(
         name="Lazy Target!",
         default="x",
         description="An internal property used to store the last node in a Lazy Connect operation")
-    bpy.types.Scene.NWSourceSocket = IntProperty(
+    bpy.types.Scene.FWSourceSocket = IntProperty(
         name="Source Socket!",
         default=0,
         description="An internal property used to store the source socket in a Lazy Connect operation")
-    bpy.types.NodeSocketInterface.NWViewerSocket = BoolProperty(
-        name="NW Socket",
+    bpy.types.NodeSocketInterface.FWViewerSocket = BoolProperty(
+        name="FW Socket",
         default=False,
         description="An internal property used to determine if a socket is generated by the addon"
     )
@@ -4518,7 +4550,7 @@ def register():
     switch_category_menus.clear()
     for cat in node_categories_iter(None):
         if cat.name not in ['Group', 'Script']:
-            idname = f"NODE_MT_nw_switch_{cat.identifier}_submenu"
+            idname = f"NODE_MT_fw_switch_{cat.identifier}_submenu"
             switch_category_type = type(idname, (bpy.types.Menu,), {
                 "bl_space_type": 'NODE_EDITOR',
                 "bl_label": cat.name,
@@ -4536,11 +4568,11 @@ def unregister():
     from bpy.utils import unregister_class
 
     # props
-    del bpy.types.Scene.NWBusyDrawing
-    del bpy.types.Scene.NWLazySource
-    del bpy.types.Scene.NWLazyTarget
-    del bpy.types.Scene.NWSourceSocket
-    del bpy.types.NodeSocketInterface.NWViewerSocket
+    del bpy.types.Scene.FWBusyDrawing
+    del bpy.types.Scene.FWLazySource
+    del bpy.types.Scene.FWLazyTarget
+    del bpy.types.Scene.FWSourceSocket
+    del bpy.types.NodeSocketInterface.FWViewerSocket
 
     for cat_types in switch_category_menus:
         bpy.utils.unregister_class(cat_types)
