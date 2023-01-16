@@ -283,84 +283,54 @@ def node_mid_pt(node, axis):
         d = 0
     return d
 
+class FinishedAutolink(Exception):
+    def __init__(self, *args):
+        pass
 
 def autolink(node1, node2, links):
-    link_made = False
     available_inputs = [inp for inp in node2.inputs if inp.enabled]
     available_outputs = [outp for outp in node1.outputs if outp.enabled]
     visible_inputs = [inp for inp in node2.inputs if (inp.enabled and not inp.hide)]
     visible_outputs = [outp for outp in node1.outputs if (outp.enabled and not outp.hide)]
 
-    for outp in visible_outputs:
-        for inp in visible_inputs:
-            if not inp.is_linked and inp.name == outp.name:
-                link_made = True
-                links.new(outp, inp)
-                return True
+    def autolink_iter(inputs, outputs, condition=(lambda a,b: True)):
+        for outp in outputs:
+            for inp in inputs:
+                if condition(inp, outp):
+                    links.new(outp, inp)
+                    raise FinishedAutolink
 
-    for outp in visible_outputs:
-        for inp in visible_inputs:
-            if not inp.is_linked and inp.type == outp.type:
-                link_made = True
-                links.new(outp, inp)
-                return True
 
-    # force some connection even if the type doesn't match
-    if visible_outputs:
-        for inp in visible_inputs:
-            if not inp.is_linked:
-                link_made = True
-                links.new(visible_outputs[0], inp)
-                return True
+    autolink_iter(visible_inputs, visible_outputs, 
+        condition=(lambda inp, outp: (not inp.is_linked and not outp.is_linked) and inp.name == outp.name))
+    autolink_iter(visible_inputs, visible_outputs, 
+        condition=(lambda inp, outp: (not inp.is_linked and not outp.is_linked) 
+            and len(set(inp.name.split(" ")) & set(outp.name.split(" "))) > 0 ))
+    
+    autolink_iter(available_inputs, available_outputs, 
+        condition=(lambda inp, outp: (not inp.is_linked and not outp.is_linked) and inp.name == outp.name))
+    autolink_iter(visible_inputs, visible_outputs, 
+        condition=(lambda inp, outp: not inp.is_linked and inp.name == outp.name))
+    autolink_iter(available_inputs, available_outputs, 
+        condition=(lambda inp, outp: not inp.is_linked and inp.name == outp.name))
 
-    # even if no sockets are open, force one of matching type
-    for outp in visible_outputs:
-        for inp in visible_inputs:
-            if inp.type == outp.type:
-                link_made = True
-                links.new(outp, inp)
-                return True
+    autolink_iter(visible_inputs, visible_outputs, 
+        condition=(lambda inp, outp: (not inp.is_linked and not outp.is_linked) and inp.type == outp.type))
+    autolink_iter(visible_inputs, visible_outputs, 
+        condition=(lambda inp, outp: not inp.is_linked and inp.type == outp.type))
+    autolink_iter(visible_inputs, visible_outputs, 
+        condition=(lambda inp, outp: not inp.is_linked))
+    autolink_iter(visible_inputs, visible_outputs, 
+        condition=(lambda inp, outp: inp.type == outp.type))
 
-    #connect without considering hidden nodes
-    for outp in available_outputs:
-        for inp in available_inputs:
-            if not inp.is_linked and inp.name == outp.name:
-                link_made = True
-                links.new(outp, inp)
-                return True
-
-    for outp in available_outputs:
-        for inp in available_inputs:
-            if not inp.is_linked and inp.type == outp.type:
-                link_made = True
-                links.new(outp, inp)
-                return True
-
-    # force some connection even if the type doesn't match
-    if available_outputs:
-        for inp in available_inputs:
-            if not inp.is_linked:
-                link_made = True
-                links.new(available_outputs[0], inp)
-                return True
-
-    # even if no sockets are open, force one of matching type
-    for outp in available_outputs:
-        for inp in available_inputs:
-            if inp.type == outp.type:
-                link_made = True
-                links.new(outp, inp)
-                return True
-
-    # do something!
-    for outp in available_outputs:
-        for inp in available_inputs:
-            link_made = True
-            links.new(outp, inp)
-            return True
-
+    autolink_iter(available_inputs, available_outputs, 
+        condition=(lambda inp, outp: not inp.is_linked))
+    autolink_iter(available_inputs, available_outputs, 
+        condition=(lambda inp, outp: not inp.is_linked and inp.type == outp.type))
+    autolink_iter(visible_inputs, visible_outputs)
+    
     print("Could not make a link from " + node1.name + " to " + node2.name)
-    return link_made
+    
 
 def abs_node_location(node):
     abs_location = node.location
@@ -1014,7 +984,10 @@ class FWLazyConnect(Operator, FWBase):
                         elif len(node1.outputs) == 1:
                             bpy.ops.node.fw_call_inputs_menu(from_socket=0)
                     else:
-                        link_success = autolink(node1, node2, links)
+                        try:
+                            link_success = autolink(node1, node2, links)
+                        except FinishedAutolink:
+                            link_success = True
 
                     for node in original_sel:
                         node.select = True
