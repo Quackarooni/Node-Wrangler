@@ -219,7 +219,7 @@ vector_operations = [
     ('MAXIMUM', 'Maximum', 'Maximum Mode'),
     ('FLOOR', 'Floor', 'Floor Mode'),
     ('CEIL', 'Ceil', 'Ceil Mode'),
-    ('FRACT', 'Fraction', 'Fraction Mode'),
+    ('FRACTION', 'Fraction', 'Fraction Mode'),
     ('MODULO', 'Modulo', 'Modulo Mode'),
     ('SNAP', 'Snap', 'Snap Mode'),
     ('WRAP', 'Wrap', 'Wrap Mode'),

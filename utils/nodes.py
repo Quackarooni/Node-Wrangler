@@ -65,6 +65,29 @@ def node_mid_pt(node, axis):
     return d
 
 
+def get_bounds(nodes):
+    weird_offset = 10
+    min_x, max_x, min_y, max_y = None, None, None, None
+
+    for index, node in enumerate(nodes):
+        x_curr_min = node.location.x
+        x_curr_max = node.location.x + node.dimensions.x
+        y_curr_min = (node.location.y - node.dimensions.y) if not node.hide else (node.location.y - weird_offset - 0.5*node.dimensions.y)
+        y_curr_max = (node.location.y) if not node.hide else (node.location.y - weird_offset + 0.5*node.dimensions.y)
+
+        if not index:
+            min_x = x_curr_min
+            max_x = x_curr_max
+            min_y = y_curr_min
+            max_y = y_curr_max
+        else:
+            min_x = min(x_curr_min, min_x)
+            max_x = max(x_curr_max, max_x)
+            min_y = min(y_curr_min, min_y)
+            max_y = max(y_curr_max, max_y)
+
+    return min_x, max_x, min_y, max_y
+
 class FinishedAutolink(Exception):
     def __init__(self, *args):
         pass

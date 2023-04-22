@@ -18,14 +18,24 @@ from mathutils import Vector
 from os import path
 from glob import glob
 from copy import copy
-from itertools import chain
+from itertools import chain, islice
 
 from .interface import NWConnectionListInputs, NWConnectionListOutputs
 
-from .utils.constants import blend_types, geo_combine_operations, operations, navs, get_nodes_from_category, rl_outputs
+from .utils.constants import (
+    blend_types, 
+    geo_combine_operations, 
+    vector_operations,
+    boolean_operations,
+    string_operations,
+    operations, 
+    navs, 
+    get_nodes_from_category, 
+    rl_outputs
+    )
 from .utils.draw import draw_callback_nodeoutline
 from .utils.paths import match_files_to_socket_names, split_into_components
-from .utils.nodes import (node_mid_pt, autolink, node_at_pos, get_active_tree, get_nodes_links, is_viewer_socket,
+from .utils.nodes import (node_mid_pt, get_bounds, autolink, node_at_pos, get_active_tree, get_nodes_links, is_viewer_socket,
                           is_viewer_link, get_group_output_node, get_output_location, force_update, get_internal_socket,
                           fw_check, NWBase, FinishedAutolink, get_first_enabled_output, is_visible_socket, temporary_unframe, viewer_socket_name)
 
@@ -1107,7 +1117,7 @@ class NWMergeNodes(Operator, NWBase):
     mode: EnumProperty(
         name="mode",
         description="All possible blend types, boolean operations and math operations",
-        items=blend_types + [op for op in geo_combine_operations if op not in blend_types] + [op for op in operations if op not in blend_types],
+        items=list(set(blend_types + geo_combine_operations + operations + vector_operations))
     )
     merge_type: EnumProperty(
         name="merge type",
@@ -1118,6 +1128,7 @@ class NWMergeNodes(Operator, NWBase):
             ('GEOMETRY', 'Geometry', 'Merge using Mesh Boolean or Join Geometry Node'),
             ('MIX', 'Mix Node', 'Merge using Mix Nodes'),
             ('MATH', 'Math Node', 'Merge using Math Nodes'),
+            ('VECTOR', 'Vector Math Node', 'Merge using Vector Math Nodes'),
             ('ZCOMBINE', 'Z-Combine Node', 'Merge using Z-Combine Nodes'),
             ('ALPHAOVER', 'Alpha Over Node', 'Merge using Alpha Over Nodes'),
         ),
@@ -1276,11 +1287,13 @@ class NWMergeNodes(Operator, NWBase):
                             ('GEOMETRY', [t[0] for t in geo_combine_operations], selected_geometry),
                             ('MIX', [t[0] for t in blend_types], selected_mix),
                             ('MATH', [t[0] for t in operations], selected_math),
+                            ('VECTOR', [t[0] for t in vector_operations], selected_vector),
                             ('ZCOMBINE', ('MIX', ), selected_z),
                             ('ALPHAOVER', ('MIX', ), selected_alphaover),
                     ):
                         if merge_type == type and mode in types_list:
                             dst.append([i, node.location.x, node.location.y, node.dimensions.x, node.hide])
+
         # When nodes with output kinds 'RGBA' and 'VALUE' are selected at the same time
         # use only 'Mix' nodes for merging.
         # For that we add selected_math list to selected_mix list and clear selected_math.
@@ -1496,6 +1509,221 @@ class NWMergeNodes(Operator, NWBase):
             nodes.active = last_add
             for i, x, y, dx, h in nodes_list:
                 nodes[i].select = False
+
+        return {'FINISHED'}
+
+class NWMergeNodesRefactored(Operator, NWBase):
+    bl_idname = "node.fw_merge_nodes_refactored"
+    bl_label = "Merge Nodes"
+    bl_description = "Merge Selected Nodes"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    mode: EnumProperty(
+        name="mode",
+        description="All possible blend types, boolean operations and math operations",
+        items=list(set(chain(
+            blend_types,
+            geo_combine_operations,
+            operations,
+            vector_operations,
+            boolean_operations,
+            string_operations
+            )))
+    )
+    merge_type: EnumProperty(
+        name="merge type",
+        description="Type of Merge to be used",
+        items=(
+            ('AUTO', 'Auto', 'Automatic Output Type Detection'),
+            ('SHADER', 'Shader', 'Merge using ADD or MIX Shader'),
+            ('GEOMETRY', 'Geometry', 'Merge using Mesh Boolean or Join Geometry Node'),
+            ('MIX', 'Mix Node', 'Merge using Mix Nodes'),
+            ('MATH', 'Math Node', 'Merge using Math Nodes'),
+            ('VECTOR', 'Vector Math Node', 'Merge using Vector Math Nodes'),
+            ('STRING', 'String Node', 'Merge using String Nodes'),
+            ('BOOLEAN', 'Boolean Math Node', 'Merge using Boolean Math Nodes'),
+            ('ZCOMBINE', 'Z-Combine Node', 'Merge using Z-Combine Nodes'),
+            ('ALPHAOVER', 'Alpha Over Node', 'Merge using Alpha Over Nodes'),
+        ),
+    )
+
+    @staticmethod
+    def is_unary(operation_name):
+        is_unary = operation_name in [
+            'NOT'
+            ''
+        ]
+
+        
+        return is_unary
+
+    # Check if the link connects to a node that is in selected_nodes
+    # If not, then check recursively for each link in the nodes outputs.
+    # If yes, return True. If the recursion stops without finding a node
+    # in selected_nodes, it returns False. The depth is used to prevent
+    # getting stuck in a loop because of an already present cycle.
+    @staticmethod
+    def link_creates_cycle(link, selected_nodes, depth=0) -> bool:
+        if depth > 255:
+            # We're stuck in a cycle, but that cycle was already present,
+            # so we return False.
+            # NOTE: The number 255 is arbitrary, but seems to work well.
+            return False
+        node = link.to_node
+        if node in selected_nodes:
+            return True
+        if not node.outputs:
+            return False
+        for output in node.outputs:
+            if output.is_linked:
+                for olink in output.links:
+                    if NWMergeNodes.link_creates_cycle(olink, selected_nodes, depth + 1):
+                        return True
+        # None of the outputs found a node in selected_nodes, so there is no cycle.
+        return False
+
+    # Merge the nodes in `nodes_list` with a node of type `node_name` that has a multi_input socket.
+    # The parameters `socket_indices` gives the indices of the node sockets in the order that they should
+    # be connected. The last one is assumed to be a multi input socket.
+    # For convenience the node is returned.
+    @staticmethod
+    def merge_with_multi_input(nodes_list, merge_position, do_hide, loc_x, links, nodes, node_name, socket_indices):
+        # The y-location of the last node
+        loc_y = nodes_list[-1][2]
+        if merge_position == 'CENTER':
+            # Average the y-location
+            for i in range(len(nodes_list) - 1):
+                loc_y += nodes_list[i][2]
+            loc_y = loc_y / len(nodes_list)
+        new_node = nodes.new(node_name)
+        new_node.hide = do_hide
+        new_node.location.x = loc_x
+        new_node.location.y = loc_y
+        selected_nodes = [nodes[node_info[0]] for node_info in nodes_list]
+        prev_links = []
+        outputs_for_multi_input = []
+        for i, node in enumerate(selected_nodes):
+            node.select = False
+            # Search for the first node which had output links that do not create
+            # a cycle, which we can then reconnect afterwards.
+            if prev_links == [] and node.outputs[0].is_linked:
+                prev_links = [
+                    link for link in node.outputs[0].links if not NWMergeNodes.link_creates_cycle(
+                        link, selected_nodes)]
+            # Get the index of the socket, the last one is a multi input, and is thus used repeatedly
+            # To get the placement to look right we need to reverse the order in which we connect the
+            # outputs to the multi input socket.
+            if i < len(socket_indices) - 1:
+                ind = socket_indices[i]
+                links.new(node.outputs[0], new_node.inputs[ind])
+            else:
+                outputs_for_multi_input.insert(0, node.outputs[0])
+        if outputs_for_multi_input != []:
+            ind = socket_indices[-1]
+            for output in outputs_for_multi_input:
+                links.new(output, new_node.inputs[ind])
+        if prev_links != []:
+            for link in prev_links:
+                links.new(new_node.outputs[0], link.to_node.inputs[0])
+        return new_node
+
+    def arrange_nodes(self, context, nodes, align_point=(0, 0)):
+        current_pos = 0
+        margin = 15
+        x_spacing_offset = 160
+
+        target_x, target_y = align_point
+
+        if self.merge_type == 'BOOLEAN':
+            offset_size = 30
+
+        for node in nodes:
+            node.location.y = current_pos
+            current_pos -= offset_size + margin
+
+        min_x, max_x, min_y, max_y = get_bounds(nodes)
+        mid_x, mid_y = (0.5 * (min_x + max_x), 0.5 * (min_y + max_y))
+
+        align_offset_x, align_offset_y = target_x - mid_x, target_y - mid_y 
+
+        for node in nodes:
+            node.location.x = align_offset_x + x_spacing_offset
+            node.location.y += align_offset_y
+
+    def execute(self, context):
+        settings = context.preferences.addons[__package__].preferences
+        merge_hide = settings.merge_hide
+        merge_position = settings.merge_position  # 'center' or 'bottom'
+        prefer_first_socket = True #Toggles whether to chain nodes by their first or second socket
+
+        tree_type = context.space_data.node_tree.type
+        if tree_type == 'GEOMETRY':
+            node_type = 'GeometryNode'
+        if tree_type == 'COMPOSITING':
+            node_type = 'CompositorNode'
+        elif tree_type == 'SHADER':
+            node_type = 'ShaderNode'
+        elif tree_type == 'TEXTURE':
+            node_type = 'TextureNode'
+
+        nodes, links = get_nodes_links(context)
+        operation_type = self.mode
+        is_unary = self.is_unary(operation_type)
+        merge_type = self.merge_type
+
+        selected_nodes = list(context.selected_nodes)
+        if not selected_nodes:
+            return {'CANCELLED'}
+
+        for node in nodes:
+            node.select = False
+
+        min_x, max_x, min_y, max_y = get_bounds(selected_nodes)
+        align_point = (max_x, 0.5 * (min_y + max_y))
+        selected_nodes.sort(key=lambda n: n.location.y - (n.dimensions.y / 2), reverse=True)
+
+        if merge_type == 'VECTOR':
+            node_to_add = 'FunctionNodeVectorMath'
+        elif merge_type == 'BOOLEAN':
+            node_to_add = 'FunctionNodeBooleanMath'
+        
+        new_nodes = []
+
+        if is_unary:
+            prev_socket = None
+
+            for node in selected_nodes:
+                new_node = nodes.new(node_to_add)
+                new_node.hide = True
+                new_node.select = True
+                new_node.operation = operation_type
+
+                #TODO - Implement get first valid socket function
+                links.new(node.outputs[0], new_node.inputs[0])
+
+                new_nodes.append(new_node)
+        else:
+            prev_socket = None
+            for node in islice(selected_nodes, 1, None):
+                new_node = nodes.new(node_to_add)
+                new_node.hide = True
+                new_node.select = True
+                new_node.operation = operation_type
+
+                if prev_socket is not None:
+                    links.new(prev_socket, new_node.inputs[not prefer_first_socket])
+                else:
+                #TODO - Implement get first valid socket function
+                    links.new(selected_nodes[0].outputs[0], new_node.inputs[not prefer_first_socket])
+
+                #TODO - Implement get first valid socket function
+                links.new(node.outputs[0], new_node.inputs[prefer_first_socket])
+                prev_socket = new_node.outputs[0]
+                new_nodes.append(new_node)
+        
+        #Set last added node to active
+        context.space_data.node_tree.nodes.active = new_node
+        self.arrange_nodes(context, new_nodes, align_point=align_point)
 
         return {'FINISHED'}
 
@@ -3056,6 +3284,7 @@ classes = (
     NWReloadImages,
     NWSwitchNodeType,
     NWMergeNodes,
+    NWMergeNodesRefactored,
     NWBatchChangeNodes,
     NWChangeMixFactor,
     NWCopySettings,

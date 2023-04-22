@@ -249,9 +249,9 @@ class NWMergeVectorMathMenu(Menu, NWBase):
                 else:
                     props = col.operator(operators.NWMergeNodes.bl_idname, text=name, icon='NONE')
                     #TODO - Must implement Vector Math Functions
-                    #props.mode = operation
-                    props.mode = "TRUNC"
-                    props.merge_type = 'MATH'
+                    props.mode = operation
+                    #props.mode = "ADD"
+                    props.merge_type = 'VECTOR'
 
 
 class NWMergeStringMenu(Menu, NWBase):
@@ -279,11 +279,10 @@ class NWMergeBoolMenu(Menu, NWBase):
         for key, items in boolean_operations_menu_dict.items():
             col.separator(factor=1.0)
             for operation, name, description in items:
-                props = col.operator(operators.NWMergeNodes.bl_idname, text=name)
+                props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
                 #TODO - Must implement Boolean Math Functions
-                #props.mode = operation
-                props.mode = "TRUNC"
-                props.merge_type = 'MATH'
+                props.mode = operation
+                props.merge_type = 'BOOLEAN'
 
 
 class NWConnectionListOutputs(Menu, NWBase):
