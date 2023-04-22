@@ -1387,6 +1387,10 @@ class NWMergeNodes(Operator, NWBase):
                         add_type = node_type + 'JoinGeometry'
                         add = self.merge_with_multi_input(
                             nodes_list, merge_position, do_hide, loc_x, links, nodes, add_type, [0])
+                    elif mode == 'INSTANCES':
+                        add_type = node_type + 'GeometryToInstance'
+                        add = self.merge_with_multi_input(
+                            nodes_list, merge_position, do_hide, loc_x, links, nodes, add_type, [0])
                     else:
                         add_type = node_type + 'MeshBoolean'
                         indices = [0, 1] if mode == 'DIFFERENCE' else [1]

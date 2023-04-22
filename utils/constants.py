@@ -201,6 +201,7 @@ operations_menu_dict = {
 # Operations used by the geometry boolean node and join geometry node
 geo_combine_operations = [
     ('JOIN', 'Join Geometry', 'Join Geometry Mode'),
+    ('INSTANCES', 'Geometry to Instance', 'Geometry to Instance Mode'),
     ('INTERSECT', 'Intersect', 'Intersect Mode'),
     ('UNION', 'Union', 'Union Mode'),
     ('DIFFERENCE', 'Difference', 'Difference Mode'),
