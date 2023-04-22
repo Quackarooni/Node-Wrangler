@@ -7,7 +7,7 @@ from nodeitems_utils import node_categories_iter, NodeItemCustom
 
 from . import operators
 
-from .utils.constants import blend_types, geo_combine_operations, operations, operations_menu_dict
+from .utils.constants import blend_types, blend_types_menu_dict, geo_combine_operations, operations, operations_menu_dict
 from .utils.nodes import get_nodes_links, fw_check, NWBase
 
 
@@ -166,10 +166,15 @@ class NWMergeMixMenu(Menu, NWBase):
 
     def draw(self, context):
         layout = self.layout
-        for type, name, description in blend_types:
-            props = layout.operator(operators.NWMergeNodes.bl_idname, text=name)
-            props.mode = type
-            props.merge_type = 'MIX'
+        row = layout.row()
+        col = row.column()   
+
+        for key, items in blend_types_menu_dict.items():
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                props = col.operator(operators.NWMergeNodes.bl_idname, text=name, icon='NONE')
+                props.mode = operation
+                props.merge_type = 'MIX'   
 
 
 class NWConnectionListOutputs(Menu, NWBase):
@@ -217,10 +222,25 @@ class NWMergeMathMenu(Menu, NWBase):
 
     def draw(self, context):
         layout = self.layout
-        for operation, name, description in operations:
-            props = layout.operator(operators.NWMergeNodes.bl_idname, text=name)
-            props.mode = operation
-            props.merge_type = 'MATH'
+        row = layout.row()
+        
+        for key, items in operations_menu_dict.items():
+            col = row.column()
+            col.label(text=key, icon='NONE')
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                if operation == "LayoutSeparator":
+                    col.separator(factor=1.0)
+                else:
+                    props = col.operator(operators.NWMergeNodes.bl_idname, text=name, icon='NONE')
+                    props.mode = operation
+                    props.merge_type = 'MATH'
+
+
+        #for operation, name, description in operations:
+        #    props = layout.operator(operators.NWMergeNodes.bl_idname, text=name)
+        #    props.mode = operation
+        #    props.merge_type = 'MATH'
 
 
 class NWBatchChangeNodesMenu(Menu, NWBase):

@@ -44,24 +44,58 @@ rl_outputs = (
 # used list, not tuple for easy merging with other lists.
 blend_types = [
     ('MIX', 'Mix', 'Mix Mode'),
-    ('ADD', 'Add', 'Add Mode'),
-    ('MULTIPLY', 'Multiply', 'Multiply Mode'),
-    ('SUBTRACT', 'Subtract', 'Subtract Mode'),
-    ('SCREEN', 'Screen', 'Screen Mode'),
-    ('DIVIDE', 'Divide', 'Divide Mode'),
-    ('DIFFERENCE', 'Difference', 'Difference Mode'),
     ('DARKEN', 'Darken', 'Darken Mode'),
+    ('MULTIPLY', 'Multiply', 'Multiply Mode'),
+    ('BURN', 'Color Burn', 'Burn Mode'),
     ('LIGHTEN', 'Lighten', 'Lighten Mode'),
-    ('OVERLAY', 'Overlay', 'Overlay Mode'),
+    ('SCREEN', 'Screen', 'Screen Mode'),
     ('DODGE', 'Dodge', 'Dodge Mode'),
-    ('BURN', 'Burn', 'Burn Mode'),
+    ('ADD', 'Add', 'Add Mode'),
+    ('OVERLAY', 'Overlay', 'Overlay Mode'),
+    ('SOFT_LIGHT', 'Soft Light', 'Soft Light Mode'),
+    ('LINEAR_LIGHT', 'Linear Light', 'Linear Light Mode'),
+    ('DIFFERENCE', 'Difference', 'Difference Mode'),
+    ('EXCLUSION', 'Exclusion', 'Exclusion Mode'),
+    ('SUBTRACT', 'Subtract', 'Subtract Mode'),
+    ('DIVIDE', 'Divide', 'Divide Mode'),
     ('HUE', 'Hue', 'Hue Mode'),
     ('SATURATION', 'Saturation', 'Saturation Mode'),
     ('VALUE', 'Value', 'Value Mode'),
     ('COLOR', 'Color', 'Color Mode'),
-    ('SOFT_LIGHT', 'Soft Light', 'Soft Light Mode'),
-    ('LINEAR_LIGHT', 'Linear Light', 'Linear Light Mode'),
 ]
+
+blend_types_menu_dict = {
+    "Normal Modes":(
+        ('MIX', 'Mix', 'Mix Mode'),),
+
+    "Darken Modes":(
+        ('DARKEN', 'Darken', 'Darken Mode'),
+        ('MULTIPLY', 'Multiply', 'Multiply Mode'),
+        ('BURN', 'Color Burn', 'Burn Mode'),),
+        
+    "Lighten Modes":(
+        ('LIGHTEN', 'Lighten', 'Lighten Mode'),
+        ('SCREEN', 'Screen', 'Screen Mode'),
+        ('DODGE', 'Color Dodge', 'Dodge Mode'),
+        ('ADD', 'Linear Dodge (Add)', 'Add Mode'),),
+
+    "Contrast Modes":(
+        ('OVERLAY', 'Overlay', 'Overlay Mode'),
+        ('SOFT_LIGHT', 'Soft Light', 'Soft Light Mode'),
+        ('LINEAR_LIGHT', 'Linear Light', 'Linear Light Mode'),),
+
+    "Inversion Modes":(
+        ('DIFFERENCE', 'Difference', 'Difference Mode'),
+        ('EXCLUSION', 'Exclusion', 'Exclusion Mode'),
+        ('SUBTRACT', 'Subtract', 'Subtract Mode'),
+        ('DIVIDE', 'Divide', 'Divide Mode'),),
+
+    "Component Modes":(
+        ('HUE', 'Hue', 'Hue Mode'),
+        ('SATURATION', 'Saturation', 'Saturation Mode'),
+        ('VALUE', 'Value', 'Value Mode'),
+        ('COLOR', 'Color', 'Color Mode'),),
+}
 
 # list of operations of "Math" nodes in a form that can be used as 'items' for EnumProperty.
 # used list, not tuple for easy merging with other lists.
@@ -103,11 +137,66 @@ operations = [
     ('ROUND', 'Round', 'Round Mode'),
     ('FLOOR', 'Floor', 'Floor Mode'),
     ('CEIL', 'Ceil', 'Ceil Mode'),
-    ('TRUNCATE', 'Truncate', 'Truncate Mode'),
+    ('TRUNC', 'Truncate', 'Truncate Mode'),
     ('RADIANS', 'To Radians', 'To Radians Mode'),
     ('DEGREES', 'To Degrees', 'To Degrees Mode'),
 ]
 
+operations_menu_dict = {
+    "Functions":
+        (('ADD', 'Add', 'Add Mode'),
+        ('SUBTRACT', 'Subtract', 'Subtract Mode'),
+        ('MULTIPLY', 'Multiply', 'Multiply Mode'),
+        ('DIVIDE', 'Divide', 'Divide Mode'),
+        ('MULTIPLY_ADD', 'Multiply Add', 'Multiply Add Mode'),
+        ("LayoutSeparator", "", ""),
+        ('POWER', 'Power', 'Power Mode'),
+        ('LOGARITHM', 'Logarithm', 'Logarithm Mode'),
+        ('SQRT', 'Square Root', 'Square Root Mode'),
+        ('INVERSE_SQRT', 'Inverse Square Root', 'Inverse Square Root Mode'),
+        ('ABSOLUTE', 'Absolute', 'Absolute Mode'),
+        ('EXPONENT', 'Exponent', 'Exponent Mode'),),
+
+    "Comparison" :(
+        ('MINIMUM', 'Minimum', 'Minimum Mode'),
+        ('MAXIMUM', 'Maximum', 'Maximum Mode'),
+        ('LESS_THAN', 'Less Than', 'Less Than Mode'),
+        ('GREATER_THAN', 'Greater Than', 'Greater Than Mode'),
+        ('SIGN', 'Sign', 'Sign Mode'),
+        ('COMPARE', 'Compare', 'Compare Mode'),
+        ('SMOOTH_MIN', 'Smooth Minimum', 'Smooth Minimum Mode'),
+        ('SMOOTH_MAX', 'Smooth Maximum', 'Smooth Maximum Mode'),),
+
+    "Rounding" :(
+        ('ROUND', 'Round', 'Round Mode'),
+        ('FLOOR', 'Floor', 'Floor Mode'),
+        ('CEIL', 'Ceil', 'Ceil Mode'),
+        ('TRUNC', 'Truncate', 'Truncate Mode'),
+        ("LayoutSeparator", "", ""),
+        ('FRACT', 'Fraction', 'Fraction Mode'),
+        ('MODULO', 'Modulo', 'Modulo Mode'),
+        ('WRAP', 'Wrap', 'Wrap Mode'),
+        ('SNAP', 'Snap', 'Snap Mode'),
+        ('PINGPONG', 'Pingpong', 'Pingpong Mode'),),
+
+    "Trigonometric" :(
+        ('SINE', 'Sine', 'Sine Mode'),
+        ('COSINE', 'Cosine', 'Cosine Mode'),
+        ('TANGENT', 'Tangent', 'Tangent Mode'),
+        ("LayoutSeparator", "", ""),
+        ('ARCSINE', 'Arcsine', 'Arcsine Mode'),
+        ('ARCCOSINE', 'Arccosine', 'Arccosine Mode'),
+        ('ARCTANGENT', 'Arctangent', 'Arctangent Mode'),
+        ('ARCTAN2', 'Arctan2', 'Arctan2 Mode'),
+        ("LayoutSeparator", "", ""),
+        ('SINH', 'Hyperbolic Sine', 'Hyperbolic Sine Mode'),
+        ('COSH', 'Hyperbolic Cosine', 'Hyperbolic Cosine Mode'),
+        ('TANH', 'Hyperbolic Tangent', 'Hyperbolic Tangent Mode'),),
+
+    "Conversion":(
+        ('RADIANS', 'To Radians', 'To Radians Mode'),
+        ('DEGREES', 'To Degrees', 'To Degrees Mode'),)
+}
 
 # Operations used by the geometry boolean node and join geometry node
 geo_combine_operations = [
