@@ -122,6 +122,7 @@ class NWMergeNodesMenu(Menu, NWBase):
             layout.menu(NWMergeShadersMenu.bl_idname, text="Use Shaders")
         if type == 'GeometryNodeTree':
             layout.menu(NWMergeGeometryMenu.bl_idname, text="Use Geometry Nodes")
+            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Nodes")
             layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
         else:
             layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Nodes")
