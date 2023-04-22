@@ -1704,7 +1704,12 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 new_nodes.append(new_node)
         else:
             prev_socket = None
-            for node in islice(selected_nodes, 1, None):
+            if len(selected_nodes) == 1:
+                generator = selected_nodes
+            else:
+                generator = islice(selected_nodes, 1, None)
+
+            for node in generator:
                 new_node = nodes.new(node_to_add)
                 new_node.hide = True
                 new_node.select = True
