@@ -1562,79 +1562,26 @@ class NWMergeNodesRefactored(Operator, NWBase):
             'SINE',
             'COSINE',
             'TANGENT',
+            #Math Ops
+            'SQRT',
+            'INVERSE_SQRT',
+            'ABSOLUTE',
+            'EXPONENT',
+            'SIGN',
+            'ROUND',
+            'TRUNC',
+            'FRACT',
+            'ARCSINE',
+            'ARCCOSINE',
+            'ARCTANGENT',
+            'SINH',
+            'COSH',
+            'TANH',
+            'RADIANS',
+            'DEGREES',
         ]
 
         return is_unary
-
-    # Check if the link connects to a node that is in selected_nodes
-    # If not, then check recursively for each link in the nodes outputs.
-    # If yes, return True. If the recursion stops without finding a node
-    # in selected_nodes, it returns False. The depth is used to prevent
-    # getting stuck in a loop because of an already present cycle.
-    @staticmethod
-    def link_creates_cycle(link, selected_nodes, depth=0) -> bool:
-        if depth > 255:
-            # We're stuck in a cycle, but that cycle was already present,
-            # so we return False.
-            # NOTE: The number 255 is arbitrary, but seems to work well.
-            return False
-        node = link.to_node
-        if node in selected_nodes:
-            return True
-        if not node.outputs:
-            return False
-        for output in node.outputs:
-            if output.is_linked:
-                for olink in output.links:
-                    if NWMergeNodes.link_creates_cycle(olink, selected_nodes, depth + 1):
-                        return True
-        # None of the outputs found a node in selected_nodes, so there is no cycle.
-        return False
-
-    # Merge the nodes in `nodes_list` with a node of type `node_name` that has a multi_input socket.
-    # The parameters `socket_indices` gives the indices of the node sockets in the order that they should
-    # be connected. The last one is assumed to be a multi input socket.
-    # For convenience the node is returned.
-    @staticmethod
-    def merge_with_multi_input(nodes_list, merge_position, do_hide, loc_x, links, nodes, node_name, socket_indices):
-        # The y-location of the last node
-        loc_y = nodes_list[-1][2]
-        if merge_position == 'CENTER':
-            # Average the y-location
-            for i in range(len(nodes_list) - 1):
-                loc_y += nodes_list[i][2]
-            loc_y = loc_y / len(nodes_list)
-        new_node = nodes.new(node_name)
-        new_node.hide = do_hide
-        new_node.location.x = loc_x
-        new_node.location.y = loc_y
-        selected_nodes = [nodes[node_info[0]] for node_info in nodes_list]
-        prev_links = []
-        outputs_for_multi_input = []
-        for i, node in enumerate(selected_nodes):
-            node.select = False
-            # Search for the first node which had output links that do not create
-            # a cycle, which we can then reconnect afterwards.
-            if prev_links == [] and node.outputs[0].is_linked:
-                prev_links = [
-                    link for link in node.outputs[0].links if not NWMergeNodes.link_creates_cycle(
-                        link, selected_nodes)]
-            # Get the index of the socket, the last one is a multi input, and is thus used repeatedly
-            # To get the placement to look right we need to reverse the order in which we connect the
-            # outputs to the multi input socket.
-            if i < len(socket_indices) - 1:
-                ind = socket_indices[i]
-                links.new(node.outputs[0], new_node.inputs[ind])
-            else:
-                outputs_for_multi_input.insert(0, node.outputs[0])
-        if outputs_for_multi_input != []:
-            ind = socket_indices[-1]
-            for output in outputs_for_multi_input:
-                links.new(output, new_node.inputs[ind])
-        if prev_links != []:
-            for link in prev_links:
-                links.new(new_node.outputs[0], link.to_node.inputs[0])
-        return new_node
 
     def arrange_nodes(self, context, nodes, align_point=(0, 0)):
         current_pos = 0
@@ -1679,6 +1626,8 @@ class NWMergeNodesRefactored(Operator, NWBase):
             node_type = 'TextureNode'
 
         nodes, links = get_nodes_links(context)
+
+        #TODO - Fetch operation type and subtype function
         operation_type = self.mode
         is_unary = self.is_unary(operation_type)
         merge_type = self.merge_type
@@ -1698,7 +1647,9 @@ class NWMergeNodesRefactored(Operator, NWBase):
             node_to_add = 'ShaderNodeVectorMath'
         elif merge_type == 'BOOLEAN':
             node_to_add = 'FunctionNodeBooleanMath'
-        
+        elif merge_type == 'MATH':
+            node_to_add = 'ShaderNodeMath'
+
         new_nodes = []
 
         if is_unary:
