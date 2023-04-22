@@ -247,10 +247,9 @@ class NWMergeVectorMathMenu(Menu, NWBase):
                 if operation == "LayoutSeparator":
                     col.separator(factor=1.0)
                 else:
-                    props = col.operator(operators.NWMergeNodes.bl_idname, text=name, icon='NONE')
+                    props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name, icon='NONE')
                     #TODO - Must implement Vector Math Functions
                     props.mode = operation
-                    #props.mode = "ADD"
                     props.merge_type = 'VECTOR'
 
 

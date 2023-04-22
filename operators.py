@@ -1550,11 +1550,20 @@ class NWMergeNodesRefactored(Operator, NWBase):
     @staticmethod
     def is_unary(operation_name):
         is_unary = operation_name in [
-            'NOT'
-            ''
+            #Boolean Ops
+            'NOT',
+            #Vector Ops
+            'NORMALIZE',
+            'LENGTH',
+            'ABSOLUTE',
+            'FRACTION',
+            'FLOOR',
+            'CEIL',
+            'SINE',
+            'COSINE',
+            'TANGENT',
         ]
 
-        
         return is_unary
 
     # Check if the link connects to a node that is in selected_nodes
@@ -1634,7 +1643,10 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
         target_x, target_y = align_point
 
+        #TODO - Implement Sizes between different nodes, in both cases of vertical and horizontal alignment
         if self.merge_type == 'BOOLEAN':
+            offset_size = 30
+        else:
             offset_size = 30
 
         for node in nodes:
@@ -1683,7 +1695,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
         selected_nodes.sort(key=lambda n: n.location.y - (n.dimensions.y / 2), reverse=True)
 
         if merge_type == 'VECTOR':
-            node_to_add = 'FunctionNodeVectorMath'
+            node_to_add = 'ShaderNodeVectorMath'
         elif merge_type == 'BOOLEAN':
             node_to_add = 'FunctionNodeBooleanMath'
         
@@ -1718,10 +1730,10 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 if prev_socket is not None:
                     links.new(prev_socket, new_node.inputs[not prefer_first_socket])
                 else:
-                #TODO - Implement get first valid socket function
+                #TODO - Implement get first valid socket function and fetch nth visible node
                     links.new(selected_nodes[0].outputs[0], new_node.inputs[not prefer_first_socket])
 
-                #TODO - Implement get first valid socket function
+                #TODO - Implement get first valid socket function and fetch nth visible node
                 links.new(node.outputs[0], new_node.inputs[prefer_first_socket])
                 prev_socket = new_node.outputs[0]
                 new_nodes.append(new_node)

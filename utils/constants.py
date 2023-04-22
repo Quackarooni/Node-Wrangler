@@ -259,7 +259,7 @@ vector_operations_menu_dict  = {
         ('FLOOR', 'Floor', 'Floor Mode'),
         ('CEIL', 'Ceil', 'Ceil Mode'),
         ("LayoutSeparator", "", ""),
-        ('FRACT', 'Fraction', 'Fraction Mode'),
+        ('FRACTION', 'Fraction', 'Fraction Mode'),
         ('MODULO', 'Modulo', 'Modulo Mode'),
         ('WRAP', 'Wrap', 'Wrap Mode'),
         ('SNAP', 'Snap', 'Snap Mode'),),
