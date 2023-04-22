@@ -1583,6 +1583,25 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
         return is_unary
 
+    @staticmethod
+    def get_valid_socket(node, mode, data_types=None, target_index=0):
+        if data_types is None:
+            sockets = [soc for soc in getattr(node, mode.lower()) 
+                if soc.enabled and (not soc.hide)]
+        else:
+            sockets = [soc for soc in getattr(node, mode.lower()) 
+                if soc.enabled and (not soc.hide) and soc.type in data_types]
+
+        return sockets[target_index]
+
+        #TODO - Implement this as an iterator rather than a list
+        for index, socket in enumerate(sockets):
+            if index == target_index:
+                return socket
+            else:
+                raise IndexError
+                
+
     def arrange_nodes(self, context, nodes, align_point=(0, 0)):
         current_pos = 0
         margin = 15
@@ -1613,7 +1632,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
         settings = context.preferences.addons[__package__].preferences
         merge_hide = settings.merge_hide
         merge_position = settings.merge_position  # 'center' or 'bottom'
-        prefer_first_socket = True #Toggles whether to chain nodes by their first or second socket
+        prefer_first_socket = False #Toggles whether to chain nodes by their first or second socket
 
         tree_type = context.space_data.node_tree.type
         if tree_type == 'GEOMETRY':
@@ -1643,15 +1662,41 @@ class NWMergeNodesRefactored(Operator, NWBase):
         align_point = (max_x, 0.5 * (min_y + max_y))
         selected_nodes.sort(key=lambda n: n.location.y - (n.dimensions.y / 2), reverse=True)
 
+        mix_type = None
+
+        # TODO - Add socket_data_type for input filtering
         if merge_type == 'VECTOR':
             node_to_add = 'ShaderNodeVectorMath'
+            subtype_name = "operation"
+            socket_data_type = ('VECTOR', )
+
         elif merge_type == 'BOOLEAN':
             node_to_add = 'FunctionNodeBooleanMath'
+            subtype_name = "operation"
+            socket_data_type = ('BOOLEAN', )
+
         elif merge_type == 'MATH':
             if tree_type == 'COMPOSITING':
                 node_to_add = 'CompositorNodeMath'
+                subtype_name = "operation"
+                socket_data_type = ('VALUE', )
             else:
                 node_to_add = 'ShaderNodeMath'
+                subtype_name = "operation"
+                socket_data_type = ('VALUE', )
+
+        elif merge_type == 'MIX':
+            if tree_type == 'COMPOSITING':
+                node_to_add = 'CompositorNodeMixRGB'
+                subtype_name = "blend_type"
+                socket_data_type = ('RGBA', )
+            else:
+                mix_type = 'RGBA'
+                node_to_add = 'ShaderNodeMix'
+                subtype_name = "blend_type"
+                socket_data_type = ('RGBA', )
+
+
 
         new_nodes = []
 
@@ -1662,34 +1707,46 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 new_node = nodes.new(node_to_add)
                 new_node.hide = True
                 new_node.select = True
-                new_node.operation = operation_type
+                setattr(new_node, subtype_name, operation_type)
 
-                #TODO - Implement get first valid socket function
-                links.new(node.outputs[0], new_node.inputs[0])
+                from_socket = self.get_valid_socket(node, mode='Outputs')
+                to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type)
 
+                links.new(from_socket, to_socket)
                 new_nodes.append(new_node)
+
         else:
             prev_socket = None
-            if len(selected_nodes) == 1:
-                generator = selected_nodes
-            else:
-                generator = islice(selected_nodes, 1, None)
+            generator = selected_nodes if (len(selected_nodes) == 1) else islice(selected_nodes, 1, None)
 
             for node in generator:
                 new_node = nodes.new(node_to_add)
                 new_node.hide = True
                 new_node.select = True
-                new_node.operation = operation_type
+                setattr(new_node, subtype_name, operation_type)
+
+                if mix_type is not None:
+                    new_node.data_type = mix_type
 
                 if prev_socket is not None:
-                    links.new(prev_socket, new_node.inputs[not prefer_first_socket])
-                else:
-                #TODO - Implement get first valid socket function and fetch nth visible node
-                    links.new(selected_nodes[0].outputs[0], new_node.inputs[not prefer_first_socket])
+                    from_socket = prev_socket
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=not prefer_first_socket)
+                    links.new(from_socket, to_socket)
 
-                #TODO - Implement get first valid socket function and fetch nth visible node
-                links.new(node.outputs[0], new_node.inputs[prefer_first_socket])
-                prev_socket = new_node.outputs[0]
+                    from_socket = self.get_valid_socket(node, mode='Outputs')
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=prefer_first_socket)
+                    links.new(from_socket, to_socket)
+
+                else:
+                    from_socket = self.get_valid_socket(selected_nodes[0], mode='Outputs')
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=0)
+                    links.new(from_socket, to_socket)
+
+                    from_socket = self.get_valid_socket(node, mode='Outputs')
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=1)
+                    links.new(from_socket, to_socket)
+                
+                prev_socket = self.get_valid_socket(new_node, mode='Outputs')
                 new_nodes.append(new_node)
         
         #Set last added node to active

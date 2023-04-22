@@ -205,7 +205,7 @@ class NWMergeMixMenu(Menu, NWBase):
         for key, items in blend_types_menu_dict.items():
             col.separator(factor=1.0)
             for operation, name, description in items:
-                props = col.operator(operators.NWMergeNodes.bl_idname, text=name, icon='NONE')
+                props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name, icon='NONE')
                 props.mode = operation
                 props.merge_type = 'MIX'   
 
