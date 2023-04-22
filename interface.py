@@ -7,8 +7,8 @@ from nodeitems_utils import node_categories_iter, NodeItemCustom
 
 from . import operators
 
-from .utils.constants import blend_types, geo_combine_operations, operations
-from .utils.nodes import get_nodes_links, nw_check, NWBase
+from .utils.constants import blend_types, geo_combine_operations, operations, operations_menu_dict
+from .utils.nodes import get_nodes_links, fw_check, NWBase
 
 
 def drawlayout(context, layout, mode='non-panel'):
@@ -82,11 +82,11 @@ def drawlayout(context, layout, mode='non-panel'):
 
 
 class NodeWranglerPanel(Panel, NWBase):
-    bl_idname = "NODE_PT_nw_node_wrangler"
+    bl_idname = "NODE_PT_fw_node_wrangler"
     bl_space_type = 'NODE_EDITOR'
-    bl_label = "Node Wrangler"
+    bl_label = "Forked Wrangler"
     bl_region_type = "UI"
-    bl_category = "Node Wrangler"
+    bl_category = "Forked Wrangler"
 
     prepend: StringProperty(
         name='prepend',
@@ -103,7 +103,7 @@ class NodeWranglerPanel(Panel, NWBase):
 #  M E N U S
 #
 class NodeWranglerMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_node_wrangler_menu"
+    bl_idname = "NODE_MT_fw_node_wrangler_menu"
     bl_label = "Node Wrangler"
 
     def draw(self, context):
@@ -112,7 +112,7 @@ class NodeWranglerMenu(Menu, NWBase):
 
 
 class NWMergeNodesMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_merge_nodes_menu"
+    bl_idname = "NODE_MT_fw_merge_nodes_menu"
     bl_label = "Merge Selected Nodes"
 
     def draw(self, context):
@@ -135,7 +135,7 @@ class NWMergeNodesMenu(Menu, NWBase):
 
 
 class NWMergeGeometryMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_merge_geometry_menu"
+    bl_idname = "NODE_MT_fw_merge_geometry_menu"
     bl_label = "Merge Selected Nodes using Geometry Nodes"
 
     def draw(self, context):
@@ -148,7 +148,7 @@ class NWMergeGeometryMenu(Menu, NWBase):
 
 
 class NWMergeShadersMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_merge_shaders_menu"
+    bl_idname = "NODE_MT_fw_merge_shaders_menu"
     bl_label = "Merge Selected Nodes using Shaders"
 
     def draw(self, context):
@@ -161,7 +161,7 @@ class NWMergeShadersMenu(Menu, NWBase):
 
 
 class NWMergeMixMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_merge_mix_menu"
+    bl_idname = "NODE_MT_fw_merge_mix_menu"
     bl_label = "Merge Selected Nodes using Mix"
 
     def draw(self, context):
@@ -173,7 +173,7 @@ class NWMergeMixMenu(Menu, NWBase):
 
 
 class NWConnectionListOutputs(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_connection_list_out"
+    bl_idname = "NODE_MT_fw_connection_list_out"
     bl_label = "From:"
 
     def draw(self, context):
@@ -191,7 +191,7 @@ class NWConnectionListOutputs(Menu, NWBase):
 
 
 class NWConnectionListInputs(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_connection_list_in"
+    bl_idname = "NODE_MT_fw_connection_list_in"
     bl_label = "To:"
 
     def draw(self, context):
@@ -212,19 +212,19 @@ class NWConnectionListInputs(Menu, NWBase):
 
 
 class NWMergeMathMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_merge_math_menu"
+    bl_idname = "NODE_MT_fw_merge_math_menu"
     bl_label = "Merge Selected Nodes using Math"
 
     def draw(self, context):
         layout = self.layout
-        for type, name, description in operations:
+        for operation, name, description in operations:
             props = layout.operator(operators.NWMergeNodes.bl_idname, text=name)
-            props.mode = type
+            props.mode = operation
             props.merge_type = 'MATH'
 
 
 class NWBatchChangeNodesMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_batch_change_nodes_menu"
+    bl_idname = "NODE_MT_fw_batch_change_nodes_menu"
     bl_label = "Batch Change Selected Nodes"
 
     def draw(self, context):
@@ -234,7 +234,7 @@ class NWBatchChangeNodesMenu(Menu, NWBase):
 
 
 class NWBatchChangeBlendTypeMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_batch_change_blend_type_menu"
+    bl_idname = "NODE_MT_fw_batch_change_blend_type_menu"
     bl_label = "Batch Change Blend Type"
 
     def draw(self, context):
@@ -246,7 +246,7 @@ class NWBatchChangeBlendTypeMenu(Menu, NWBase):
 
 
 class NWBatchChangeOperationMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_batch_change_operation_menu"
+    bl_idname = "NODE_MT_fw_batch_change_operation_menu"
     bl_label = "Batch Change Math Operation"
 
     def draw(self, context):
@@ -258,7 +258,7 @@ class NWBatchChangeOperationMenu(Menu, NWBase):
 
 
 class NWCopyToSelectedMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_copy_node_properties_menu"
+    bl_idname = "NODE_MT_fw_copy_node_properties_menu"
     bl_label = "Copy to Selected"
 
     def draw(self, context):
@@ -268,7 +268,7 @@ class NWCopyToSelectedMenu(Menu, NWBase):
 
 
 class NWCopyLabelMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_copy_label_menu"
+    bl_idname = "NODE_MT_fw_copy_label_menu"
     bl_label = "Copy Label"
 
     def draw(self, context):
@@ -279,7 +279,7 @@ class NWCopyLabelMenu(Menu, NWBase):
 
 
 class NWAddReroutesMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_add_reroutes_menu"
+    bl_idname = "NODE_MT_fw_add_reroutes_menu"
     bl_label = "Add Reroutes"
     bl_description = "Add Reroute Nodes to Selected Nodes' Outputs"
 
@@ -291,7 +291,7 @@ class NWAddReroutesMenu(Menu, NWBase):
 
 
 class NWLinkActiveToSelectedMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_link_active_to_selected_menu"
+    bl_idname = "NODE_MT_fw_link_active_to_selected_menu"
     bl_label = "Link Active to Selected"
 
     def draw(self, context):
@@ -302,7 +302,7 @@ class NWLinkActiveToSelectedMenu(Menu, NWBase):
 
 
 class NWLinkStandardMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_link_standard_menu"
+    bl_idname = "NODE_MT_fw_link_standard_menu"
     bl_label = "To All Selected"
 
     def draw(self, context):
@@ -318,7 +318,7 @@ class NWLinkStandardMenu(Menu, NWBase):
 
 
 class NWLinkUseNodeNameMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_link_use_node_name_menu"
+    bl_idname = "NODE_MT_fw_link_use_node_name_menu"
     bl_label = "Use Node Name/Label"
 
     def draw(self, context):
@@ -334,7 +334,7 @@ class NWLinkUseNodeNameMenu(Menu, NWBase):
 
 
 class NWLinkUseOutputsNamesMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_link_use_outputs_names_menu"
+    bl_idname = "NODE_MT_fw_link_use_outputs_names_menu"
     bl_label = "Use Outputs Names"
 
     def draw(self, context):
@@ -350,13 +350,13 @@ class NWLinkUseOutputsNamesMenu(Menu, NWBase):
 
 
 class NWAttributeMenu(bpy.types.Menu):
-    bl_idname = "NODE_MT_nw_node_attribute_menu"
+    bl_idname = "NODE_MT_fw_node_attribute_menu"
     bl_label = "Attributes"
 
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             snode = context.space_data
             valid = snode.tree_type == 'ShaderNodeTree'
         return valid
@@ -386,7 +386,7 @@ class NWAttributeMenu(bpy.types.Menu):
 
 
 class NWSwitchNodeTypeMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_nw_switch_node_type_menu"
+    bl_idname = "NODE_MT_fw_switch_node_type_menu"
     bl_label = "Switch Type to..."
 
     def draw(self, context):
@@ -394,7 +394,7 @@ class NWSwitchNodeTypeMenu(Menu, NWBase):
         categories = [c for c in node_categories_iter(context)
                       if c.name not in ['Group', 'Script']]
         for cat in categories:
-            idname = f"NODE_MT_nw_switch_{cat.identifier}_submenu"
+            idname = f"NODE_MT_fw_switch_{cat.identifier}_submenu"
             if hasattr(bpy.types, idname):
                 layout.menu(idname)
             else:
@@ -432,7 +432,7 @@ def select_parent_children_buttons(self, context):
 
 def attr_nodes_menu_func(self, context):
     col = self.layout.column(align=True)
-    col.menu("NODE_MT_nw_node_attribute_menu")
+    col.menu("NODE_MT_fw_node_attribute_menu")
     col.separator()
 
 
@@ -448,7 +448,7 @@ def bgreset_menu_func(self, context):
 
 
 def save_viewer_menu_func(self, context):
-    if nw_check(context):
+    if fw_check(context):
         if context.space_data.tree_type == 'CompositorNodeTree':
             if context.scene.node_tree.nodes.active:
                 if context.scene.node_tree.nodes.active.type == "VIEWER":

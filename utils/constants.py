@@ -108,6 +108,7 @@ operations = [
     ('DEGREES', 'To Degrees', 'To Degrees Mode'),
 ]
 
+
 # Operations used by the geometry boolean node and join geometry node
 geo_combine_operations = [
     ('JOIN', 'Join Geometry', 'Join Geometry Mode'),

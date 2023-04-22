@@ -413,7 +413,7 @@ def register():
     switch_category_menus.clear()
     for cat in node_categories_iter(None):
         if cat.name not in ['Group', 'Script']:
-            idname = f"NODE_MT_nw_switch_{cat.identifier}_submenu"
+            idname = f"NODE_MT_fw_switch_{cat.identifier}_submenu"
             switch_category_type = type(idname, (bpy.types.Menu,), {
                 "bl_space_type": 'NODE_EDITOR',
                 "bl_label": cat.name,

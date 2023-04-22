@@ -266,7 +266,7 @@ def get_output_location(tree):
     return loc_x, loc_y
 
 
-def nw_check(context):
+def fw_check(context):
     space = context.space_data
     valid_trees = ["ShaderNodeTree", "CompositorNodeTree", "TextureNodeTree", "GeometryNodeTree"]
 
@@ -310,4 +310,4 @@ class temporary_unframe():  # Context manager for temporarily unparenting nodes 
 class NWBase:
     @classmethod
     def poll(cls, context):
-        return nw_check(context)
+        return fw_check(context)

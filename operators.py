@@ -27,12 +27,12 @@ from .utils.draw import draw_callback_nodeoutline
 from .utils.paths import match_files_to_socket_names, split_into_components
 from .utils.nodes import (node_mid_pt, autolink, node_at_pos, get_active_tree, get_nodes_links, is_viewer_socket,
                           is_viewer_link, get_group_output_node, get_output_location, force_update, get_internal_socket,
-                          nw_check, NWBase, FinishedAutolink, get_first_enabled_output, is_visible_socket, temporary_unframe, viewer_socket_name)
+                          fw_check, NWBase, FinishedAutolink, get_first_enabled_output, is_visible_socket, temporary_unframe, viewer_socket_name)
 
 
 class NWLazyMix(Operator, NWBase):
     """Add a Mix RGB/Shader node by interactively drawing lines between nodes"""
-    bl_idname = "node.nw_lazy_mix"
+    bl_idname = "node.fw_lazy_mix"
     bl_label = "Mix Nodes"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -77,7 +77,7 @@ class NWLazyMix(Operator, NWBase):
                     node1.select = True
                     node2.select = True
 
-                    bpy.ops.node.nw_merge_nodes(mode="MIX", merge_type="AUTO")
+                    bpy.ops.node.fw_merge_nodes(mode="MIX", merge_type="AUTO")
 
             context.scene.NWBusyDrawing = ""
             return {'FINISHED'}
@@ -109,7 +109,7 @@ class NWLazyMix(Operator, NWBase):
 
 class NWLazyConnect(Operator, NWBase):
     """Connect two nodes without clicking a specific socket (automatically determined"""
-    bl_idname = "node.nw_lazy_connect"
+    bl_idname = "node.fw_lazy_connect"
     bl_label = "Lazy Connect"
     bl_options = {'REGISTER', 'UNDO'}
     with_menu: BoolProperty()
@@ -167,7 +167,7 @@ class NWLazyConnect(Operator, NWBase):
                         if len(node1.outputs) > 1 and node2.inputs:
                             bpy.ops.wm.call_menu("INVOKE_DEFAULT", name=NWConnectionListOutputs.bl_idname)
                         elif len(node1.outputs) == 1:
-                            bpy.ops.node.nw_call_inputs_menu(from_socket=0)
+                            bpy.ops.node.fw_call_inputs_menu(from_socket=0)
                     else:
                         try:
                             link_success = autolink(node1, node2, links)
@@ -218,7 +218,7 @@ class NWLazyConnect(Operator, NWBase):
 
 class NWDeleteUnused(Operator, NWBase):
     """Delete all nodes whose output is not used"""
-    bl_idname = 'node.nw_del_unused'
+    bl_idname = 'node.fw_del_unused'
     bl_label = 'Delete Unused Nodes'
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -246,7 +246,7 @@ class NWDeleteUnused(Operator, NWBase):
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             if context.space_data.node_tree.nodes:
                 valid = True
         return valid
@@ -330,14 +330,14 @@ class NWDeleteUnused(Operator, NWBase):
 
 class NWSwapLinks(Operator, NWBase):
     """Swap the output connections of the two selected nodes, or two similar inputs of a single node"""
-    bl_idname = 'node.nw_swap_links'
+    bl_idname = 'node.fw_swap_links'
     bl_label = 'Swap Links'
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             if context.selected_nodes:
                 valid = len(context.selected_nodes) <= 2
         return valid
@@ -448,14 +448,14 @@ class NWSwapLinks(Operator, NWBase):
 
 class NWResetBG(Operator, NWBase):
     """Reset the zoom and position of the background image"""
-    bl_idname = 'node.nw_bg_reset'
+    bl_idname = 'node.fw_bg_reset'
     bl_label = 'Reset Backdrop'
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             snode = context.space_data
             valid = snode.tree_type == 'CompositorNodeTree'
         return valid
@@ -469,7 +469,7 @@ class NWResetBG(Operator, NWBase):
 
 class NWAddAttrNode(Operator, NWBase):
     """Add an Attribute node with this name"""
-    bl_idname = 'node.nw_add_attr_node'
+    bl_idname = 'node.fw_add_attr_node'
     bl_label = 'Add UV map'
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -483,7 +483,7 @@ class NWAddAttrNode(Operator, NWBase):
 
 
 class NWPreviewNode(Operator, NWBase):
-    bl_idname = "node.nw_preview_node"
+    bl_idname = "node.fw_preview_node"
     bl_label = "Preview Node"
     bl_description = "Connect active node to the Node Group output or the Material Output"
     bl_options = {'REGISTER', 'UNDO'}
@@ -498,7 +498,7 @@ class NWPreviewNode(Operator, NWBase):
 
     @classmethod
     def poll(cls, context):
-        if nw_check(context):
+        if fw_check(context):
             space = context.space_data
             if space.tree_type == 'ShaderNodeTree' or space.tree_type == 'GeometryNodeTree':
                 if context.active_node:
@@ -816,7 +816,7 @@ class NWPreviewNode(Operator, NWBase):
 
 
 class NWFrameSelected(Operator, NWBase):
-    bl_idname = "node.nw_frame_selected"
+    bl_idname = "node.fw_frame_selected"
     bl_label = "Frame Selected"
     bl_description = "Add a frame node and parent the selected nodes to it"
     bl_options = {'REGISTER', 'UNDO'}
@@ -867,14 +867,14 @@ class NWFrameSelected(Operator, NWBase):
 
 
 class NWReloadImages(Operator):
-    bl_idname = "node.nw_reload_images"
+    bl_idname = "node.fw_reload_images"
     bl_label = "Reload Images"
     bl_description = "Update all the image nodes to match their files on disk"
 
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context) and context.space_data.tree_type != 'GeometryNodeTree':
+        if fw_check(context) and context.space_data.tree_type != 'GeometryNodeTree':
             if context.active_node is not None:
                 for out in context.active_node.outputs:
                     if is_visible_socket(out):
@@ -911,7 +911,7 @@ class NWReloadImages(Operator):
 
 class NWSwitchNodeType(Operator, NWBase):
     """Switch type of selected nodes """
-    bl_idname = "node.nw_swtch_node_type"
+    bl_idname = "node.fw_swtch_node_type"
     bl_label = "Switch Node Type"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -1099,7 +1099,7 @@ class NWSwitchNodeType(Operator, NWBase):
 
 
 class NWMergeNodes(Operator, NWBase):
-    bl_idname = "node.nw_merge_nodes"
+    bl_idname = "node.fw_merge_nodes"
     bl_label = "Merge Nodes"
     bl_description = "Merge Selected Nodes"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1497,7 +1497,7 @@ class NWMergeNodes(Operator, NWBase):
 
 
 class NWBatchChangeNodes(Operator, NWBase):
-    bl_idname = "node.nw_batch_change"
+    bl_idname = "node.fw_batch_change"
     bl_label = "Batch Change"
     bl_description = "Batch Change Blend Type and Math Operation"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1558,7 +1558,7 @@ class NWBatchChangeNodes(Operator, NWBase):
 
 
 class NWChangeMixFactor(Operator, NWBase):
-    bl_idname = "node.nw_factor"
+    bl_idname = "node.fw_factor"
     bl_label = "Change Factor"
     bl_description = "Change Factors of Mix Nodes and Mix Shader Nodes"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1589,7 +1589,7 @@ class NWChangeMixFactor(Operator, NWBase):
 
 
 class NWCopySettings(Operator, NWBase):
-    bl_idname = "node.nw_copy_settings"
+    bl_idname = "node.fw_copy_settings"
     bl_label = "Copy Settings"
     bl_description = "Copy Settings of Active Node to Selected Nodes"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1597,7 +1597,7 @@ class NWCopySettings(Operator, NWBase):
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             if (
                     context.active_node is not None and
                     context.active_node.type != 'FRAME'
@@ -1709,7 +1709,7 @@ class NWCopySettings(Operator, NWBase):
 
 
 class NWCopyLabel(Operator, NWBase):
-    bl_idname = "node.nw_copy_label"
+    bl_idname = "node.fw_copy_label"
     bl_label = "Copy Label"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -1753,7 +1753,7 @@ class NWCopyLabel(Operator, NWBase):
 
 
 class NWClearLabel(Operator, NWBase):
-    bl_idname = "node.nw_clear_label"
+    bl_idname = "node.fw_clear_label"
     bl_label = "Clear Label"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -1775,7 +1775,7 @@ class NWClearLabel(Operator, NWBase):
 
 class NWModifyLabels(Operator, NWBase):
     """Modify Labels of all selected nodes"""
-    bl_idname = "node.nw_modify_labels"
+    bl_idname = "node.fw_modify_labels"
     bl_label = "Modify Labels"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -1807,7 +1807,7 @@ class NWModifyLabels(Operator, NWBase):
 
 
 class NWAddTextureSetup(Operator, NWBase):
-    bl_idname = "node.nw_add_texture"
+    bl_idname = "node.fw_add_texture"
     bl_label = "Texture Setup"
     bl_description = "Add Texture Node Setup to Selected Shaders"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1819,7 +1819,7 @@ class NWAddTextureSetup(Operator, NWBase):
 
     @classmethod
     def poll(cls, context):
-        if nw_check(context):
+        if fw_check(context):
             space = context.space_data
             if space.tree_type == 'ShaderNodeTree':
                 return True
@@ -1891,7 +1891,7 @@ class NWAddTextureSetup(Operator, NWBase):
 
 
 class NWAddPrincipledSetup(Operator, NWBase, ImportHelper):
-    bl_idname = "node.nw_add_textures_for_principled"
+    bl_idname = "node.fw_add_textures_for_principled"
     bl_label = "Principled Texture Setup"
     bl_description = "Add Texture Node Setup for Principled BSDF"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1927,7 +1927,7 @@ class NWAddPrincipledSetup(Operator, NWBase, ImportHelper):
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             space = context.space_data
             if space.tree_type == 'ShaderNodeTree':
                 valid = True
@@ -2157,7 +2157,7 @@ class NWAddPrincipledSetup(Operator, NWBase, ImportHelper):
 
 class NWAddReroutes(Operator, NWBase):
     """Add Reroute Nodes and link them to outputs of selected nodes"""
-    bl_idname = "node.nw_add_reroutes"
+    bl_idname = "node.fw_add_reroutes"
     bl_label = "Add Reroutes"
     bl_description = "Add Reroutes to Outputs"
     bl_options = {'REGISTER', 'UNDO'}
@@ -2257,7 +2257,7 @@ class NWAddReroutes(Operator, NWBase):
 
 class NWLinkActiveToSelected(Operator, NWBase):
     """Link active node to selected nodes basing on various criteria"""
-    bl_idname = "node.nw_link_active_to_selected"
+    bl_idname = "node.fw_link_active_to_selected"
     bl_label = "Link Active Node to Selected"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -2268,7 +2268,7 @@ class NWLinkActiveToSelected(Operator, NWBase):
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             if context.active_node is not None:
                 if context.active_node.select:
                     valid = True
@@ -2338,7 +2338,7 @@ class NWLinkActiveToSelected(Operator, NWBase):
 
 class NWAlignNodes(Operator, NWBase):
     '''Align the selected nodes neatly in a row/column'''
-    bl_idname = "node.nw_align_nodes"
+    bl_idname = "node.fw_align_nodes"
     bl_label = "Align Nodes"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -2366,7 +2366,7 @@ class NWAlignNodes(Operator, NWBase):
         selection = (node for node in context.selected_nodes if node.type != 'FRAME')
         for index, _ in enumerate(selection):
             if index >= 1:
-                return nw_check(context)
+                return fw_check(context)
 
         return False
 
@@ -2477,7 +2477,7 @@ class NWAlignNodes(Operator, NWBase):
 
 
 class NWSelectParentChildren(Operator, NWBase):
-    bl_idname = "node.nw_select_parent_child"
+    bl_idname = "node.fw_select_parent_child"
     bl_label = "Select Parent or Children"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -2509,7 +2509,7 @@ class NWSelectParentChildren(Operator, NWBase):
 
 class NWDetachOutputs(Operator, NWBase):
     """Detach outputs of selected node leaving inputs linked"""
-    bl_idname = "node.nw_detach_outputs"
+    bl_idname = "node.fw_detach_outputs"
     bl_label = "Detach Outputs"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -2531,14 +2531,14 @@ class NWDetachOutputs(Operator, NWBase):
 
 class NWLinkToOutputNode(Operator):
     """Link to Composite node or Material Output node"""
-    bl_idname = "node.nw_link_out"
+    bl_idname = "node.fw_link_out"
     bl_label = "Connect to Output"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             if context.active_node is not None:
                 for out in context.active_node.outputs:
                     if is_visible_socket(out):
@@ -2602,7 +2602,7 @@ class NWLinkToOutputNode(Operator):
 
 class NWMakeLink(Operator, NWBase):
     """Make a link from one socket to another"""
-    bl_idname = 'node.nw_make_link'
+    bl_idname = 'node.fw_make_link'
     bl_label = 'Make Link'
     bl_options = {'REGISTER', 'UNDO'}
     from_socket: IntProperty()
@@ -2623,7 +2623,7 @@ class NWMakeLink(Operator, NWBase):
 
 class NWCallInputsMenu(Operator, NWBase):
     """Link from this output"""
-    bl_idname = 'node.nw_call_inputs_menu'
+    bl_idname = 'node.fw_call_inputs_menu'
     bl_label = 'Make Link'
     bl_options = {'REGISTER', 'UNDO'}
     from_socket: IntProperty()
@@ -2644,7 +2644,7 @@ class NWCallInputsMenu(Operator, NWBase):
 
 class NWAddSequence(Operator, NWBase, ImportHelper):
     """Add an Image Sequence"""
-    bl_idname = 'node.nw_add_sequence'
+    bl_idname = 'node.fw_add_sequence'
     bl_label = 'Import Image Sequence'
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -2765,7 +2765,7 @@ class NWAddSequence(Operator, NWBase, ImportHelper):
 
 class NWAddMultipleImages(Operator, NWBase, ImportHelper):
     """Add multiple images at once"""
-    bl_idname = 'node.nw_add_multiple_images'
+    bl_idname = 'node.fw_add_multiple_images'
     bl_label = 'Open Selected Images'
     bl_options = {'REGISTER', 'UNDO'}
     directory: StringProperty(
@@ -2818,7 +2818,7 @@ class NWAddMultipleImages(Operator, NWBase, ImportHelper):
 
 class NWViewerFocus(bpy.types.Operator):
     """Set the viewer tile center to the mouse position"""
-    bl_idname = "node.nw_viewer_focus"
+    bl_idname = "node.fw_viewer_focus"
     bl_label = "Viewer Focus"
 
     x: bpy.props.IntProperty()
@@ -2826,7 +2826,7 @@ class NWViewerFocus(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return nw_check(context) and context.space_data.tree_type == 'CompositorNodeTree'
+        return fw_check(context) and context.space_data.tree_type == 'CompositorNodeTree'
 
     def execute(self, context):
         return {'FINISHED'}
@@ -2874,7 +2874,7 @@ class NWViewerFocus(bpy.types.Operator):
 
 class NWSaveViewer(bpy.types.Operator, ExportHelper):
     """Save the current viewer node to an image file"""
-    bl_idname = "node.nw_save_viewer"
+    bl_idname = "node.fw_save_viewer"
     bl_label = "Save This Image"
     filepath: StringProperty(subtype="FILE_PATH")
     filename_ext: EnumProperty(
@@ -2897,7 +2897,7 @@ class NWSaveViewer(bpy.types.Operator, ExportHelper):
     @classmethod
     def poll(cls, context):
         valid = False
-        if nw_check(context):
+        if fw_check(context):
             if context.space_data.tree_type == 'CompositorNodeTree':
                 if "Viewer Node" in [i.name for i in bpy.data.images]:
                     if sum(bpy.data.images["Viewer Node"].size) > 0:  # False if not connected or connected but no image
@@ -2934,7 +2934,7 @@ class NWSaveViewer(bpy.types.Operator, ExportHelper):
 
 class NWResetNodes(bpy.types.Operator):
     """Reset Nodes in Selection"""
-    bl_idname = "node.nw_reset_nodes"
+    bl_idname = "node.fw_reset_nodes"
     bl_label = "Reset Nodes"
     bl_options = {'REGISTER', 'UNDO'}
 
