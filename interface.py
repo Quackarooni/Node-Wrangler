@@ -7,7 +7,18 @@ from nodeitems_utils import node_categories_iter, NodeItemCustom
 
 from . import operators
 
-from .utils.constants import blend_types, blend_types_menu_dict, geo_combine_operations, operations, operations_menu_dict
+from .utils.constants import (
+    blend_types, 
+    blend_types_menu_dict, 
+    geo_combine_operations, 
+    operations, 
+    operations_menu_dict,
+    string_operations,
+    vector_operations,
+    vector_operations_menu_dict,
+    boolean_operations,
+    boolean_operations_menu_dict
+    )
 from .utils.nodes import get_nodes_links, fw_check, NWBase
 
 
@@ -119,17 +130,38 @@ class NWMergeNodesMenu(Menu, NWBase):
         type = context.space_data.tree_type
         layout = self.layout
         if type == 'ShaderNodeTree':
-            layout.menu(NWMergeShadersMenu.bl_idname, text="Use Shaders")
-        if type == 'GeometryNodeTree':
-            layout.menu(NWMergeGeometryMenu.bl_idname, text="Use Geometry Nodes")
+            layout.menu(NWMergeShadersMenu.bl_idname, text="Use Shaders")            
+            layout.separator()
             layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Nodes")
             layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
-        else:
-            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Nodes")
-            layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
+            layout.menu(NWMergeVectorMathMenu.bl_idname, text="Use Vector Math Nodes")
+            layout.separator()
+
             props = layout.operator(operators.NWMergeNodes.bl_idname, text="Use Z-Combine Nodes")
             props.mode = 'MIX'
             props.merge_type = 'ZCOMBINE'
+
+            props = layout.operator(operators.NWMergeNodes.bl_idname, text="Use Alpha Over Nodes")
+            props.mode = 'MIX'
+            props.merge_type = 'ALPHAOVER'
+
+        elif type == 'GeometryNodeTree':
+            layout.menu(NWMergeGeometryMenu.bl_idname, text="Use Geometry Nodes")
+            layout.separator()
+            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Nodes")
+            layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
+            layout.menu(NWMergeVectorMathMenu.bl_idname, text="Use Vector Math Nodes")
+            layout.separator()
+            layout.menu(NWMergeBoolMenu.bl_idname, text="Use Boolean Math Nodes")
+            layout.menu(NWMergeStringMenu.bl_idname, text="Use String Nodes")
+        else:
+            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Nodes")
+            layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
+
+            props = layout.operator(operators.NWMergeNodes.bl_idname, text="Use Z-Combine Nodes")
+            props.mode = 'MIX'
+            props.merge_type = 'ZCOMBINE'
+
             props = layout.operator(operators.NWMergeNodes.bl_idname, text="Use Alpha Over Nodes")
             props.mode = 'MIX'
             props.merge_type = 'ALPHAOVER'
@@ -178,6 +210,82 @@ class NWMergeMixMenu(Menu, NWBase):
                 props.merge_type = 'MIX'   
 
 
+class NWMergeMathMenu(Menu, NWBase):
+    bl_idname = "NODE_MT_fw_merge_math_menu"
+    bl_label = "Merge Selected Nodes using Math"
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row()
+        
+        for key, items in operations_menu_dict.items():
+            col = row.column()
+            col.label(text=key, icon='NONE')
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                if operation == "LayoutSeparator":
+                    col.separator(factor=1.0)
+                else:
+                    props = col.operator(operators.NWMergeNodes.bl_idname, text=name, icon='NONE')
+                    props.mode = operation
+                    props.merge_type = 'MATH'
+
+
+class NWMergeVectorMathMenu(Menu, NWBase):
+    bl_idname = "NODE_MT_fw_merge_vector_math_menu"
+    bl_label = "Merge Selected Nodes using Vector Math"
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row()
+        
+        for key, items in vector_operations_menu_dict.items():
+            col = row.column()
+            col.label(text=key, icon='NONE')
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                if operation == "LayoutSeparator":
+                    col.separator(factor=1.0)
+                else:
+                    props = col.operator(operators.NWMergeNodes.bl_idname, text=name, icon='NONE')
+                    #TODO - Must implement Vector Math Functions
+                    #props.mode = operation
+                    props.mode = "TRUNC"
+                    props.merge_type = 'MATH'
+
+
+class NWMergeStringMenu(Menu, NWBase):
+    bl_idname = "NODE_MT_fw_merge_string_menu"
+    bl_label = "Merge Selected Nodes using String Nodes"
+
+    def draw(self, context):
+        layout = self.layout
+        for type, name, description in string_operations:
+            props = layout.operator(operators.NWMergeNodes.bl_idname, text=name)
+            #TODO - Must implement String Functions
+            #props.mode = operation
+            props.mode = "TRUNC"
+            props.merge_type = 'MATH'
+
+class NWMergeBoolMenu(Menu, NWBase):
+    bl_idname = "NODE_MT_fw_merge_bool_menu"
+    bl_label = "Merge Selected Nodes using Boolean Math Nodes"
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row()
+        col = row.column()   
+
+        for key, items in boolean_operations_menu_dict.items():
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                props = col.operator(operators.NWMergeNodes.bl_idname, text=name)
+                #TODO - Must implement Boolean Math Functions
+                #props.mode = operation
+                props.mode = "TRUNC"
+                props.merge_type = 'MATH'
+
+
 class NWConnectionListOutputs(Menu, NWBase):
     bl_idname = "NODE_MT_fw_connection_list_out"
     bl_label = "From:"
@@ -215,34 +323,6 @@ class NWConnectionListInputs(Menu, NWBase):
                 op = layout.operator(operators.NWMakeLink.bl_idname, text=input.name, icon="FORWARD")
                 op.from_socket = context.scene.NWSourceSocket
                 op.to_socket = index
-
-
-class NWMergeMathMenu(Menu, NWBase):
-    bl_idname = "NODE_MT_fw_merge_math_menu"
-    bl_label = "Merge Selected Nodes using Math"
-
-    def draw(self, context):
-        layout = self.layout
-        row = layout.row()
-        
-        for key, items in operations_menu_dict.items():
-            col = row.column()
-            col.label(text=key, icon='NONE')
-            col.separator(factor=1.0)
-            for operation, name, description in items:
-                if operation == "LayoutSeparator":
-                    col.separator(factor=1.0)
-                else:
-                    props = col.operator(operators.NWMergeNodes.bl_idname, text=name, icon='NONE')
-                    props.mode = operation
-                    props.merge_type = 'MATH'
-
-
-        #for operation, name, description in operations:
-        #    props = layout.operator(operators.NWMergeNodes.bl_idname, text=name)
-        #    props.mode = operation
-        #    props.merge_type = 'MATH'
-
 
 class NWBatchChangeNodesMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_batch_change_nodes_menu"
@@ -500,9 +580,12 @@ classes = (
     NWMergeGeometryMenu,
     NWMergeShadersMenu,
     NWMergeMixMenu,
+    NWMergeMathMenu,
+    NWMergeVectorMathMenu,
+    NWMergeStringMenu,
+    NWMergeBoolMenu,
     NWConnectionListOutputs,
     NWConnectionListInputs,
-    NWMergeMathMenu,
     NWBatchChangeNodesMenu,
     NWBatchChangeBlendTypeMenu,
     NWBatchChangeOperationMenu,

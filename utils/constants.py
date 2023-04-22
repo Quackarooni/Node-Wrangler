@@ -143,8 +143,8 @@ operations = [
 ]
 
 operations_menu_dict = {
-    "Functions":
-        (('ADD', 'Add', 'Add Mode'),
+    "Functions":(
+        ('ADD', 'Add', 'Add Mode'),
         ('SUBTRACT', 'Subtract', 'Subtract Mode'),
         ('MULTIPLY', 'Multiply', 'Multiply Mode'),
         ('DIVIDE', 'Divide', 'Divide Mode'),
@@ -196,6 +196,115 @@ operations_menu_dict = {
     "Conversion":(
         ('RADIANS', 'To Radians', 'To Radians Mode'),
         ('DEGREES', 'To Degrees', 'To Degrees Mode'),)
+}
+
+vector_operations = [
+    ('ADD', 'Add', 'Add Mode'),
+    ('SUBTRACT', 'Subtract', 'Subtract Mode'),
+    ('MULTIPLY', 'Multiply', 'Multiply Mode'),
+    ('DIVIDE', 'Divide', 'Divide Mode'),
+    ('MULTIPLY_ADD', 'Multiply Add', 'Multiply Add Mode'),
+    ('DOT_PRODUCT', 'Dot Product', 'Dot Product Mode'),
+    ('CROSS_PRODUCT', 'Cross Product', 'Cross Product Mode'),
+    ('PROJECT', 'Project', 'Project Mode'),
+    ('REFLECT', 'Reflect', 'Reflect Mode'),
+    ('REFRACT', 'Refract', 'Refract Mode'),
+    ('FACEFORWARD', 'Faceforward', 'Faceforward Mode'),
+    ('DISTANCE', 'Distance', 'Distance Mode'),
+    ('LENGTH', 'Length', 'Length Mode'),
+    ('SCALE', 'Scale', 'Scale Mode'),
+    ('NORMALIZE', 'Normalize', 'Normalize Mode'),
+    ('ABSOLUTE', 'Absolute', 'Absolute Mode'),
+    ('MINIMUM', 'Minimum', 'Minimum Mode'),
+    ('MAXIMUM', 'Maximum', 'Maximum Mode'),
+    ('FLOOR', 'Floor', 'Floor Mode'),
+    ('CEIL', 'Ceil', 'Ceil Mode'),
+    ('FRACT', 'Fraction', 'Fraction Mode'),
+    ('MODULO', 'Modulo', 'Modulo Mode'),
+    ('SNAP', 'Snap', 'Snap Mode'),
+    ('WRAP', 'Wrap', 'Wrap Mode'),
+    ('SINE', 'Sine', 'Sine Mode'),
+    ('COSINE', 'Cosine', 'Cosine Mode'),
+    ('TANGENT', 'Tangent', 'Tangent Mode'),
+]
+
+vector_operations_menu_dict  = {
+    "Functions":(
+        ('ADD', 'Add', 'Add Mode'),
+        ('SUBTRACT', 'Subtract', 'Subtract Mode'),
+        ('MULTIPLY', 'Multiply', 'Multiply Mode'),
+        ('DIVIDE', 'Divide', 'Divide Mode'),
+        ("LayoutSeparator", "", ""),
+        ('MULTIPLY_ADD', 'Multiply Add', 'Multiply Add Mode'),    
+        ('ABSOLUTE', 'Absolute', 'Absolute Mode'),),
+
+    "Vector":(
+        ('DOT_PRODUCT', 'Dot Product', 'Dot Product Mode'),
+        ('CROSS_PRODUCT', 'Cross Product', 'Cross Product Mode'),
+        ("LayoutSeparator", "", ""),
+        ('PROJECT', 'Project', 'Project Mode'),
+        ('REFLECT', 'Reflect', 'Reflect Mode'),
+        ('REFRACT', 'Refract', 'Refract Mode'),
+        ('FACEFORWARD', 'Faceforward', 'Faceforward Mode'),
+        ("LayoutSeparator", "", ""),
+        ('DISTANCE', 'Distance', 'Distance Mode'),
+        ('LENGTH', 'Length', 'Length Mode'),
+        ('SCALE', 'Scale', 'Scale Mode'),
+        ('NORMALIZE', 'Normalize', 'Normalize Mode'),),
+
+    "Comparison / Rounding" :(
+        ('MINIMUM', 'Minimum', 'Minimum Mode'),
+        ('MAXIMUM', 'Maximum', 'Maximum Mode'),
+        ("LayoutSeparator", "", ""),
+        ('FLOOR', 'Floor', 'Floor Mode'),
+        ('CEIL', 'Ceil', 'Ceil Mode'),
+        ("LayoutSeparator", "", ""),
+        ('FRACT', 'Fraction', 'Fraction Mode'),
+        ('MODULO', 'Modulo', 'Modulo Mode'),
+        ('WRAP', 'Wrap', 'Wrap Mode'),
+        ('SNAP', 'Snap', 'Snap Mode'),),
+
+    "Trigonometric" :(
+        ('SINE', 'Sine', 'Sine Mode'),
+        ('COSINE', 'Cosine', 'Cosine Mode'),
+        ('TANGENT', 'Tangent', 'Tangent Mode'),)
+}
+
+string_operations = [
+    ('JOIN', 'Join Strings', 'Join Mode'),
+    ('REPLACE', 'Replace Strings', 'Replace Mode'),
+    ('SLICE', 'Slice Strings', 'Slice Mode'),
+    ('STRING_LENGTH', 'String Length', 'String Length Mode'),
+    ('STRING_TO_CURVES', 'String to Curves', 'String to Curves Mode'),
+    ('VALUE_TO_STRING', 'Value to String', 'Value to String Mode'),
+]
+boolean_operations = [
+    ('AND', 'And', 'And Mode'),
+    ('OR', 'Or', 'Or Mode'),
+    ('NOT', 'Not', 'Not Mode'),
+    ('NAND', 'Not And', 'Not And Mode'),
+    ('NOR', 'Nor', 'Nor Mode'),
+    ('XNOR', 'Equal', 'Equal Mode'),
+    ('XOR', 'Not Equal', 'Not Equal Mode'),
+    ('IMPLY', 'Imply', 'Imply Mode'),
+    ('NIMPLY', 'Subtract', 'Subtract Mode'),
+]
+
+boolean_operations_menu_dict  = {
+    "Basic Operations":(
+        ('AND', 'And', 'And Mode'),
+        ('OR', 'Or', 'Or Mode'),
+        ('NOT', 'Not', 'Not Mode'),),
+
+    "Compound Operations":(
+        ('NAND', 'Not And', 'Not And Mode'),
+        ('NOR', 'Nor', 'Nor Mode'),
+        ('XNOR', 'Equal', 'Equal Mode'),
+        ('XOR', 'Not Equal', 'Not Equal Mode'),),
+        
+    "Directional Operations":(
+        ('IMPLY', 'Imply', 'Imply Mode'),
+        ('NIMPLY', 'Subtract', 'Subtract Mode'),),
 }
 
 # Operations used by the geometry boolean node and join geometry node
