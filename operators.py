@@ -1648,7 +1648,10 @@ class NWMergeNodesRefactored(Operator, NWBase):
         elif merge_type == 'BOOLEAN':
             node_to_add = 'FunctionNodeBooleanMath'
         elif merge_type == 'MATH':
-            node_to_add = 'ShaderNodeMath'
+            if tree_type == 'COMPOSITING':
+                node_to_add = 'CompositorNodeMath'
+            else:
+                node_to_add = 'ShaderNodeMath'
 
         new_nodes = []
 
