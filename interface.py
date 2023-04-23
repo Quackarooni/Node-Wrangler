@@ -166,9 +166,9 @@ class NWMergeGeometryMenu(Menu, NWBase):
     def draw(self, context):
         layout = self.layout
         # The boolean node + Join Geometry node
-        for type, name, description in geo_combine_operations:
-            props = layout.operator(operators.NWMergeNodes.bl_idname, text=name)
-            props.mode = type
+        for operation, name, description in geo_combine_operations:
+            props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
+            props.mode = operation
             props.merge_type = 'GEOMETRY'
 
 

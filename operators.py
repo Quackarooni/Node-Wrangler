@@ -1594,7 +1594,13 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
         batch_ops = [
             #String Ops
-            'JOIN'
+            'JOIN',
+            #Geometry Ops
+            'JOIN_GEOMETRY',
+            'INSTANCES',
+            'DIFFERENCE',
+            'UNION',
+            'INTERSECT',
         ]
 
         if operation_name in unary_ops:
@@ -1686,6 +1692,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
         selected_nodes.sort(key=lambda n: n.location.y - (n.dimensions.y / 2), reverse=True)
 
         mix_type = None
+        isolate_first_socket = False
         preferred_input_type = [
             'CUSTOM', 
             'VALUE', 
@@ -1753,6 +1760,30 @@ class NWMergeNodesRefactored(Operator, NWBase):
             if operation_type == 'JOIN':
                 batch_socket_index = 1
 
+        elif merge_type == 'GEOMETRY':
+            lookup_dict = {
+                'JOIN_GEOMETRY': 'GeometryNodeJoinGeometry',
+                'INSTANCES': 'GeometryNodeGeometryToInstance',
+                'DIFFERENCE': 'GeometryNodeMeshBoolean',
+                'UNION': 'GeometryNodeMeshBoolean',
+                'INTERSECT': 'GeometryNodeMeshBoolean',
+                }
+
+            node_to_add = lookup_dict[operation_type]
+            socket_data_type = ('GEOMETRY')
+            preferred_input_type = ['GEOMETRY']
+            subtype_name = None
+
+            if node_to_add == 'GeometryNodeMeshBoolean':
+                subtype_name = 'operation'
+
+            if operation_type == 'DIFFERENCE':
+                isolate_first_socket = True
+                first_socket_index = 0
+                batch_socket_index = 1
+            else:
+                batch_socket_index = 0
+
         elif merge_type == 'SHADER':
             lookup_dict = {
                 'MIX': 'ShaderNodeMixShader',
@@ -1766,7 +1797,6 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
 
         new_nodes = []
-
         if function_type == 'UNARY':
             prev_socket = None
 
@@ -1790,13 +1820,28 @@ class NWMergeNodesRefactored(Operator, NWBase):
             new_node.select = True
 
             new_nodes.append(new_node)
+            if subtype_name is not None:
+                setattr(new_node, subtype_name, operation_type)
 
             batch_socket = self.get_valid_socket(new_node, mode='Inputs', 
                 data_types=socket_data_type, target_index=batch_socket_index)
             
-            for node in reversed(selected_nodes):
-                from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                links.new(from_socket, batch_socket)
+            if not isolate_first_socket:
+                for node in reversed(selected_nodes):
+                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
+                    links.new(from_socket, batch_socket)
+            else:
+                first_node = selected_nodes.pop(0)
+
+                for node in reversed(selected_nodes):
+                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
+                    links.new(from_socket, batch_socket)
+
+                first_to_socket = self.get_valid_socket(new_node, mode='Inputs', 
+                    data_types=socket_data_type, target_index=first_socket_index)
+                first_from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=preferred_input_type)
+
+                links.new(first_from_socket, first_to_socket)
 
         else:
             prev_socket = None
