@@ -132,7 +132,7 @@ class NWMergeNodesMenu(Menu, NWBase):
         if type == 'ShaderNodeTree':
             layout.menu(NWMergeShadersMenu.bl_idname, text="Use Shaders")            
             layout.separator()
-            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Nodes")
+            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Color Nodes")
             layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
             layout.menu(NWMergeVectorMathMenu.bl_idname, text="Use Vector Math Nodes")
 
@@ -146,7 +146,7 @@ class NWMergeNodesMenu(Menu, NWBase):
             layout.menu(NWMergeBoolMenu.bl_idname, text="Use Boolean Math Nodes")
             layout.menu(NWMergeStringMenu.bl_idname, text="Use String Nodes")
         else:
-            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Nodes")
+            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Color Nodes")
             layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
 
             props = layout.operator(operators.NWMergeNodes.bl_idname, text="Use Z-Combine Nodes")
