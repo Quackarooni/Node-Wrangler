@@ -137,14 +137,6 @@ class NWMergeNodesMenu(Menu, NWBase):
             layout.menu(NWMergeVectorMathMenu.bl_idname, text="Use Vector Math Nodes")
             layout.separator()
 
-            props = layout.operator(operators.NWMergeNodes.bl_idname, text="Use Z-Combine Nodes")
-            props.mode = 'MIX'
-            props.merge_type = 'ZCOMBINE'
-
-            props = layout.operator(operators.NWMergeNodes.bl_idname, text="Use Alpha Over Nodes")
-            props.mode = 'MIX'
-            props.merge_type = 'ALPHAOVER'
-
         elif type == 'GeometryNodeTree':
             layout.menu(NWMergeGeometryMenu.bl_idname, text="Use Geometry Nodes")
             layout.separator()
