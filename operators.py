@@ -1537,7 +1537,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
             ('AUTO', 'Auto', 'Automatic Output Type Detection'),
             ('SHADER', 'Shader', 'Merge using ADD or MIX Shader'),
             ('GEOMETRY', 'Geometry', 'Merge using Mesh Boolean or Join Geometry Node'),
-            ('MIX', 'Mix Node', 'Merge using Mix Nodes'),
+            ('MIX_COLOR', 'Mix Color Node', 'Merge using Mix Color Nodes'),
             ('MATH', 'Math Node', 'Merge using Math Nodes'),
             ('VECTOR', 'Vector Math Node', 'Merge using Vector Math Nodes'),
             ('STRING', 'String Node', 'Merge using String Nodes'),
@@ -1720,7 +1720,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 subtype_name = "operation"
                 socket_data_type = ('VALUE', )
 
-        elif merge_type == 'MIX':
+        elif merge_type == 'MIX_COLOR':
             if tree_type == 'COMPOSITING':
                 node_to_add = 'CompositorNodeMixRGB'
                 subtype_name = "blend_type"

@@ -148,7 +148,7 @@ class NWMergeNodesMenu(Menu, NWBase):
         elif type == 'GeometryNodeTree':
             layout.menu(NWMergeGeometryMenu.bl_idname, text="Use Geometry Nodes")
             layout.separator()
-            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Nodes")
+            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Color Nodes")
             layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
             layout.menu(NWMergeVectorMathMenu.bl_idname, text="Use Vector Math Nodes")
             layout.separator()
@@ -207,7 +207,7 @@ class NWMergeMixMenu(Menu, NWBase):
             for operation, name, description in items:
                 props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name, icon='NONE')
                 props.mode = operation
-                props.merge_type = 'MIX'   
+                props.merge_type = 'MIX_COLOR'   
 
 
 class NWMergeMathMenu(Menu, NWBase):
