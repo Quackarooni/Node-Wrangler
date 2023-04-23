@@ -1682,6 +1682,22 @@ class NWMergeNodesRefactored(Operator, NWBase):
         selected_nodes.sort(key=lambda n: n.location.y - (n.dimensions.y / 2), reverse=True)
 
         mix_type = None
+        preferred_input_type = [
+            'CUSTOM', 
+            'VALUE', 
+            'INT', 
+            'BOOLEAN', 
+            'VECTOR', 
+            'STRING', 
+            'RGBA', 
+            'SHADER', 
+            'OBJECT', 
+            'IMAGE', 
+            #'GEOMETRY', #Exclude geometry sockets as inputs by default
+            'COLLECTION', 
+            'TEXTURE', 
+            'MATERIAL'
+            ]
 
         # TODO - Add socket_data_type for input filtering
         if merge_type == 'VECTOR':
@@ -1746,7 +1762,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 if subtype_name is not None:
                     setattr(new_node, subtype_name, operation_type)
 
-                from_socket = self.get_valid_socket(node, mode='Outputs')
+                from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
                 to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type)
 
                 links.new(from_socket, to_socket)
@@ -1763,7 +1779,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 data_types=socket_data_type, target_index=batch_socket_index)
             
             for node in reversed(selected_nodes):
-                from_socket = self.get_valid_socket(node, mode='Outputs')
+                from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
                 links.new(from_socket, batch_socket)
 
         else:
@@ -1786,20 +1802,20 @@ class NWMergeNodesRefactored(Operator, NWBase):
                     to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=not prefer_first_socket)
                     links.new(from_socket, to_socket)
 
-                    from_socket = self.get_valid_socket(node, mode='Outputs')
+                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
                     to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=prefer_first_socket)
                     links.new(from_socket, to_socket)
 
                 else:
-                    from_socket = self.get_valid_socket(selected_nodes[0], mode='Outputs')
+                    from_socket = self.get_valid_socket(selected_nodes[0], mode='Outputs', data_types=preferred_input_type)
                     to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=0)
                     links.new(from_socket, to_socket)
 
-                    from_socket = self.get_valid_socket(node, mode='Outputs')
+                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
                     to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=1)
                     links.new(from_socket, to_socket)
                 
-                prev_socket = self.get_valid_socket(new_node, mode='Outputs')
+                prev_socket = self.get_valid_socket(new_node, mode='Outputs', data_types=preferred_input_type)
                 new_nodes.append(new_node)
         
         #Set last added node to active
