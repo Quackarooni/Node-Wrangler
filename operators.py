@@ -1627,7 +1627,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
     def arrange_nodes(self, context, nodes, align_point=(0, 0)):
         current_pos = 0
         margin = 15
-        x_spacing_offset = 160
+        x_spacing_offset = 120
 
         target_x, target_y = align_point
 
