@@ -135,7 +135,6 @@ class NWMergeNodesMenu(Menu, NWBase):
             layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Nodes")
             layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
             layout.menu(NWMergeVectorMathMenu.bl_idname, text="Use Vector Math Nodes")
-            layout.separator()
 
         elif type == 'GeometryNodeTree':
             layout.menu(NWMergeGeometryMenu.bl_idname, text="Use Geometry Nodes")
