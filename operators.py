@@ -1700,6 +1700,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
             ]
 
         # TODO - Add socket_data_type for input filtering
+        
         if merge_type == 'VECTOR':
             node_to_add = 'ShaderNodeVectorMath'
             subtype_name = "operation"
@@ -1747,6 +1748,16 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
             if operation_type == 'JOIN':
                 batch_socket_index = 1
+
+        elif merge_type == 'SHADER':
+            lookup_dict = {
+                'MIX': 'ShaderNodeMixShader',
+                'ADD': 'ShaderNodeAddShader',
+                }
+
+            node_to_add = lookup_dict[operation_type]
+            subtype_name = None
+            socket_data_type = ('SHADER')
 
 
         new_nodes = []
