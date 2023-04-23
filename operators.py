@@ -1662,6 +1662,8 @@ class NWMergeNodesRefactored(Operator, NWBase):
         merge_hide = settings.merge_hide
         merge_position = settings.merge_position  # 'center' or 'bottom'
         prefer_first_socket = True #Toggles whether to chain nodes by their first or second socket
+
+        tree_type = context.space_data.node_tree.type
         nodes, links = get_nodes_links(context)
 
         #TODO - Fetch operation type and subtype function
