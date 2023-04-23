@@ -1548,8 +1548,10 @@ class NWMergeNodesRefactored(Operator, NWBase):
     )
 
     @staticmethod
-    def is_unary(operation_name):
-        is_unary = operation_name in [
+    def get_function_type(operation_name):
+
+
+        unary_ops = [
             #Boolean Ops
             'NOT',
             #Vector Ops
@@ -1579,9 +1581,25 @@ class NWMergeNodesRefactored(Operator, NWBase):
             'TANH',
             'RADIANS',
             'DEGREES',
+            #String Ops
+            'SLICE',
+            'STRING_LENGTH',
+            'STRING_TO_CURVES',
+            'VALUE_TO_STRING',
         ]
 
-        return is_unary
+        batch_ops = [
+            #String Ops
+            'JOIN'
+        ]
+
+        if operation_name in unary_ops:
+            return 'UNARY'
+        elif operation_name in batch_ops:
+            return 'BATCH'
+        else:
+            return 'BINARY'
+
 
     @staticmethod
     def get_valid_socket(node, mode, data_types=None, target_index=0):
@@ -1610,8 +1628,9 @@ class NWMergeNodesRefactored(Operator, NWBase):
         target_x, target_y = align_point
 
         #TODO - Implement Sizes between different nodes, in both cases of vertical and horizontal alignment
-        if self.merge_type == 'BOOLEAN':
-            offset_size = 30
+
+        if self.mode == 'STRING_TO_CURVES':
+            offset_size = 50
         else:
             offset_size = 30
 
@@ -1632,7 +1651,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
         settings = context.preferences.addons[__package__].preferences
         merge_hide = settings.merge_hide
         merge_position = settings.merge_position  # 'center' or 'bottom'
-        prefer_first_socket = False #Toggles whether to chain nodes by their first or second socket
+        prefer_first_socket = True #Toggles whether to chain nodes by their first or second socket
 
         tree_type = context.space_data.node_tree.type
         if tree_type == 'GEOMETRY':
@@ -1648,7 +1667,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
         #TODO - Fetch operation type and subtype function
         operation_type = self.mode
-        is_unary = self.is_unary(operation_type)
+        function_type = self.get_function_type(operation_type)
         merge_type = self.merge_type
 
         selected_nodes = list(context.selected_nodes)
@@ -1696,24 +1715,56 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 subtype_name = "blend_type"
                 socket_data_type = ('RGBA', )
 
+        elif merge_type == 'STRING':
+            lookup_dict = {
+                'JOIN': 'GeometryNodeStringJoin',
+                'REPLACE': 'FunctionNodeReplaceString',
+                'SLICE': 'FunctionNodeSliceString',
+                'STRING_LENGTH': 'FunctionNodeStringLength',
+                'STRING_TO_CURVES': 'GeometryNodeStringToCurves',
+                'VALUE_TO_STRING': 'FunctionNodeValueToString',
+                }
+
+            node_to_add = lookup_dict[operation_type]
+            subtype_name = None
+            socket_data_type = ('STRING', 'VALUE')
+
+            if operation_type == 'JOIN':
+                batch_socket_index = 1
 
 
         new_nodes = []
 
-        if is_unary:
+        if function_type == 'UNARY':
             prev_socket = None
 
             for node in selected_nodes:
                 new_node = nodes.new(node_to_add)
                 new_node.hide = True
                 new_node.select = True
-                setattr(new_node, subtype_name, operation_type)
+                
+                if subtype_name is not None:
+                    setattr(new_node, subtype_name, operation_type)
 
                 from_socket = self.get_valid_socket(node, mode='Outputs')
                 to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type)
 
                 links.new(from_socket, to_socket)
                 new_nodes.append(new_node)
+
+        elif function_type == 'BATCH':
+            new_node = nodes.new(node_to_add)
+            new_node.hide = True
+            new_node.select = True
+
+            new_nodes.append(new_node)
+
+            batch_socket = self.get_valid_socket(new_node, mode='Inputs', 
+                data_types=socket_data_type, target_index=batch_socket_index)
+            
+            for node in reversed(selected_nodes):
+                from_socket = self.get_valid_socket(node, mode='Outputs')
+                links.new(from_socket, batch_socket)
 
         else:
             prev_socket = None
@@ -1723,7 +1774,9 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 new_node = nodes.new(node_to_add)
                 new_node.hide = True
                 new_node.select = True
-                setattr(new_node, subtype_name, operation_type)
+
+                if subtype_name is not None:
+                    setattr(new_node, subtype_name, operation_type)
 
                 if mix_type is not None:
                     new_node.data_type = mix_type

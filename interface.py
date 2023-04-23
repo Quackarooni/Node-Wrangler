@@ -258,12 +258,11 @@ class NWMergeStringMenu(Menu, NWBase):
 
     def draw(self, context):
         layout = self.layout
-        for type, name, description in string_operations:
-            props = layout.operator(operators.NWMergeNodes.bl_idname, text=name)
+        for operation, name, description in string_operations:
+            props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
             #TODO - Must implement String Functions
-            #props.mode = operation
-            props.mode = "TRUNC"
-            props.merge_type = 'MATH'
+            props.mode = operation
+            props.merge_type = 'STRING'
 
 class NWMergeBoolMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_merge_bool_menu"
