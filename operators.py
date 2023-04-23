@@ -27,6 +27,7 @@ from .utils.constants import (
     geo_combine_operations, 
     vector_operations,
     boolean_operations,
+    shader_operations,
     string_operations,
     operations, 
     navs, 
@@ -1527,6 +1528,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
             operations,
             vector_operations,
             boolean_operations,
+            shader_operations,
             string_operations
             )))
     )
@@ -1586,6 +1588,8 @@ class NWMergeNodesRefactored(Operator, NWBase):
             'STRING_LENGTH',
             'STRING_TO_CURVES',
             'VALUE_TO_STRING',
+            #Shader Ops
+            'SHADER_TO_RGB'
         ]
 
         batch_ops = [
@@ -1753,6 +1757,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
             lookup_dict = {
                 'MIX': 'ShaderNodeMixShader',
                 'ADD': 'ShaderNodeAddShader',
+                'SHADER_TO_RGB': 'ShaderNodeShaderToRGB',
                 }
 
             node_to_add = lookup_dict[operation_type]

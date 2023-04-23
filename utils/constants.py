@@ -316,6 +316,11 @@ geo_combine_operations = [
     ('DIFFERENCE', 'Difference', 'Difference Mode'),
 ]
 
+shader_operations = [
+    ('MIX', 'Mix Shader', 'Mix Shader Mode'),
+    ('ADD', 'Add Shader', 'Add Shader Mode'),
+    ('SHADER_TO_RGB', 'Shader to RGB', 'Shader to RGB Mode'),
+]
 # in NWBatchChangeNodes additional types/operations. Can be used as 'items' for EnumProperty.
 # used list, not tuple for easy merging with other lists.
 navs = [

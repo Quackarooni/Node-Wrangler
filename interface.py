@@ -14,6 +14,7 @@ from .utils.constants import (
     operations, 
     operations_menu_dict,
     string_operations,
+    shader_operations,
     vector_operations,
     vector_operations_menu_dict,
     boolean_operations,
@@ -177,8 +178,8 @@ class NWMergeShadersMenu(Menu, NWBase):
 
     def draw(self, context):
         layout = self.layout
-        for operation in ('MIX', 'ADD'):
-            name = f'{operation.capitalize()} Shader'
+
+        for operation, name, description in shader_operations:
             props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
             props.mode = operation
             props.merge_type = 'SHADER'
