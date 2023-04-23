@@ -1662,17 +1662,6 @@ class NWMergeNodesRefactored(Operator, NWBase):
         merge_hide = settings.merge_hide
         merge_position = settings.merge_position  # 'center' or 'bottom'
         prefer_first_socket = True #Toggles whether to chain nodes by their first or second socket
-
-        tree_type = context.space_data.node_tree.type
-        if tree_type == 'GEOMETRY':
-            node_type = 'GeometryNode'
-        if tree_type == 'COMPOSITING':
-            node_type = 'CompositorNode'
-        elif tree_type == 'SHADER':
-            node_type = 'ShaderNode'
-        elif tree_type == 'TEXTURE':
-            node_type = 'TextureNode'
-
         nodes, links = get_nodes_links(context)
 
         #TODO - Fetch operation type and subtype function
