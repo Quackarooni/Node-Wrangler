@@ -130,24 +130,24 @@ class NWMergeNodesMenu(Menu, NWBase):
         type = context.space_data.tree_type
         layout = self.layout
         if type == 'ShaderNodeTree':
-            layout.menu(NWMergeShadersMenu.bl_idname, text="Use Shaders")            
+            layout.menu(NWMergeShadersMenu.bl_idname)            
             layout.separator()
-            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Color Nodes")
-            layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
-            layout.menu(NWMergeVectorMathMenu.bl_idname, text="Use Vector Math Nodes")
+            layout.menu(NWMergeMixMenu.bl_idname)
+            layout.menu(NWMergeMathMenu.bl_idname)
+            layout.menu(NWMergeVectorMathMenu.bl_idname)
 
         elif type == 'GeometryNodeTree':
-            layout.menu(NWMergeGeometryMenu.bl_idname, text="Use Geometry Nodes")
+            layout.menu(NWMergeGeometryMenu.bl_idname)
             layout.separator()
-            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Color Nodes")
-            layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
-            layout.menu(NWMergeVectorMathMenu.bl_idname, text="Use Vector Math Nodes")
+            layout.menu(NWMergeMixMenu.bl_idname)
+            layout.menu(NWMergeMathMenu.bl_idname)
+            layout.menu(NWMergeVectorMathMenu.bl_idname)
             layout.separator()
-            layout.menu(NWMergeBoolMenu.bl_idname, text="Use Boolean Math Nodes")
-            layout.menu(NWMergeStringMenu.bl_idname, text="Use String Nodes")
+            layout.menu(NWMergeBoolMenu.bl_idname)
+            layout.menu(NWMergeStringMenu.bl_idname)
         else:
-            layout.menu(NWMergeMixMenu.bl_idname, text="Use Mix Color Nodes")
-            layout.menu(NWMergeMathMenu.bl_idname, text="Use Math Nodes")
+            layout.menu(NWMergeMixMenu.bl_idname)
+            layout.menu(NWMergeMathMenu.bl_idname)
 
             props = layout.operator(operators.NWMergeNodes.bl_idname, text="Use Z-Combine Nodes")
             props.mode = 'MIX'
@@ -160,7 +160,7 @@ class NWMergeNodesMenu(Menu, NWBase):
 
 class NWMergeGeometryMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_merge_geometry_menu"
-    bl_label = "Merge Selected Nodes using Geometry Nodes"
+    bl_label = "Use Geometry Nodes"
 
     def draw(self, context):
         layout = self.layout
@@ -173,7 +173,7 @@ class NWMergeGeometryMenu(Menu, NWBase):
 
 class NWMergeShadersMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_merge_shaders_menu"
-    bl_label = "Merge Selected Nodes using Shaders"
+    bl_label = "Use Shaders"
 
     def draw(self, context):
         layout = self.layout
@@ -186,7 +186,7 @@ class NWMergeShadersMenu(Menu, NWBase):
 
 class NWMergeMixMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_merge_mix_menu"
-    bl_label = "Merge Selected Nodes using Mix"
+    bl_label = "Use Mix Color Nodes"
 
     def draw(self, context):
         layout = self.layout
@@ -203,7 +203,7 @@ class NWMergeMixMenu(Menu, NWBase):
 
 class NWMergeMathMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_merge_math_menu"
-    bl_label = "Merge Selected Nodes using Math"
+    bl_label = "Use Math Nodes"
 
     def draw(self, context):
         layout = self.layout
@@ -224,7 +224,7 @@ class NWMergeMathMenu(Menu, NWBase):
 
 class NWMergeVectorMathMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_merge_vector_math_menu"
-    bl_label = "Merge Selected Nodes using Vector Math"
+    bl_label = "Use Vector Math Nodes"
 
     def draw(self, context):
         layout = self.layout
@@ -245,19 +245,18 @@ class NWMergeVectorMathMenu(Menu, NWBase):
 
 class NWMergeStringMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_merge_string_menu"
-    bl_label = "Merge Selected Nodes using String Nodes"
+    bl_label = "Use String Nodes"
 
     def draw(self, context):
         layout = self.layout
         for operation, name, description in string_operations:
             props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
-            #TODO - Must implement String Functions
             props.mode = operation
             props.merge_type = 'STRING'
 
 class NWMergeBoolMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_merge_bool_menu"
-    bl_label = "Merge Selected Nodes using Boolean Math Nodes"
+    bl_label = "Use Boolean Math Nodes"
 
     def draw(self, context):
         layout = self.layout
@@ -268,7 +267,6 @@ class NWMergeBoolMenu(Menu, NWBase):
             col.separator(factor=1.0)
             for operation, name, description in items:
                 props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
-                #TODO - Must implement Boolean Math Functions
                 props.mode = operation
                 props.merge_type = 'BOOLEAN'
 
