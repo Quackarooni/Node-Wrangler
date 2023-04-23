@@ -178,9 +178,14 @@ class NWMergeShadersMenu(Menu, NWBase):
 
     def draw(self, context):
         layout = self.layout
+        render_engine = context.scene.render.engine
 
         for operation, name, description in shader_operations:
-            props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
+            if operation == 'SHADER_TO_RGB':
+                if render_engine == 'BLENDER_EEVEE':
+                    props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
+            else:
+                props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
             props.mode = operation
             props.merge_type = 'SHADER'
 
