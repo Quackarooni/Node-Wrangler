@@ -1522,7 +1522,9 @@ class NWMergeNodesRefactored(Operator, NWBase):
     mode: EnumProperty(
         name="mode",
         description="All possible blend types, boolean operations and math operations",
+        default='NONE',
         items=list(set(chain(
+            (('NONE', 'NONE', 'NONE',),),
             blend_types,
             geo_combine_operations,
             operations,
@@ -1544,8 +1546,8 @@ class NWMergeNodesRefactored(Operator, NWBase):
             ('VECTOR', 'Vector Math Node', 'Merge using Vector Math Nodes'),
             ('STRING', 'String Node', 'Merge using String Nodes'),
             ('BOOLEAN', 'Boolean Math Node', 'Merge using Boolean Math Nodes'),
-            ('ZCOMBINE', 'Z-Combine Node', 'Merge using Z-Combine Nodes'),
-            ('ALPHAOVER', 'Alpha Over Node', 'Merge using Alpha Over Nodes'),
+            ('Z_COMBINE', 'Z-Combine Node', 'Merge using Z-Combine Nodes'),
+            ('ALPHA_OVER', 'Alpha Over Node', 'Merge using Alpha Over Nodes'),
         ),
     )
 
@@ -1785,6 +1787,16 @@ class NWMergeNodesRefactored(Operator, NWBase):
             node_to_add = lookup_dict[operation_type]
             subtype_name = None
             socket_data_type = ('SHADER')
+
+        elif merge_type == 'Z_COMBINE':
+            node_to_add = 'CompositorNodeZcombine'
+            subtype_name = None
+            socket_data_type = ('RGBA', )
+
+        elif merge_type == 'ALPHA_OVER':
+            node_to_add = 'CompositorNodeAlphaOver'
+            subtype_name = None
+            socket_data_type = ('RGBA', )
 
 
         new_nodes = []

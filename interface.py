@@ -150,14 +150,11 @@ class NWMergeNodesMenu(Menu, NWBase):
             layout.menu(NWMergeMixMenu.bl_idname)
             layout.menu(NWMergeMathMenu.bl_idname)
 
-            props = layout.operator(operators.NWMergeNodes.bl_idname, text="Use Z-Combine Nodes")
-            props.mode = 'MIX'
-            props.merge_type = 'ZCOMBINE'
+            props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text="Use Z-Combine Nodes")
+            props.merge_type = 'Z_COMBINE'
 
-            props = layout.operator(operators.NWMergeNodes.bl_idname, text="Use Alpha Over Nodes")
-            props.mode = 'MIX'
-            props.merge_type = 'ALPHAOVER'
-
+            props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text="Use Alpha Over Nodes")
+            props.merge_type = 'ALPHA_OVER'
 
 class NWMergeGeometryMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_merge_geometry_menu"
