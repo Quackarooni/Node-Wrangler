@@ -1559,37 +1559,12 @@ class NWMergeNodesRefactored(Operator, NWBase):
             #Boolean Ops
             'NOT',
             #Vector Ops
-            'NORMALIZE',
-            'LENGTH',
-            'ABSOLUTE',
-            'FRACTION',
-            'FLOOR',
-            'CEIL',
-            'SINE',
-            'COSINE',
-            'TANGENT',
+            'NORMALIZE','LENGTH','ABSOLUTE','FRACTION','FLOOR','CEIL','SINE','COSINE','TANGENT',
             #Math Ops
-            'SQRT',
-            'INVERSE_SQRT',
-            'ABSOLUTE',
-            'EXPONENT',
-            'SIGN',
-            'ROUND',
-            'TRUNC',
-            'FRACT',
-            'ARCSINE',
-            'ARCCOSINE',
-            'ARCTANGENT',
-            'SINH',
-            'COSH',
-            'TANH',
-            'RADIANS',
-            'DEGREES',
+            'SQRT','INVERSE_SQRT','ABSOLUTE','EXPONENT','SIGN','ROUND','TRUNC','FRACT',
+            'ARCSINE','ARCCOSINE','ARCTANGENT','SINH','COSH','TANH','RADIANS','DEGREES',
             #String Ops
-            'SLICE',
-            'STRING_LENGTH',
-            'STRING_TO_CURVES',
-            'VALUE_TO_STRING',
+            'SLICE','STRING_LENGTH','STRING_TO_CURVES','VALUE_TO_STRING',
             #Shader Ops
             'SHADER_TO_RGB'
         ]
@@ -1687,20 +1662,10 @@ class NWMergeNodesRefactored(Operator, NWBase):
         mix_type = None
         isolate_first_socket = False
         preferred_input_type = [
-            'CUSTOM', 
-            'VALUE', 
-            'INT', 
-            'BOOLEAN', 
-            'VECTOR', 
-            'STRING', 
-            'RGBA', 
-            'SHADER', 
-            'OBJECT', 
-            'IMAGE', 
+            'CUSTOM', 'VALUE', 'INT', 'BOOLEAN', 'VECTOR', 
+            'STRING', 'RGBA', 'SHADER', 'OBJECT', 'IMAGE', 
             #'GEOMETRY', #Exclude geometry sockets as inputs by default
-            'COLLECTION', 
-            'TEXTURE', 
-            'MATERIAL'
+            'COLLECTION', 'TEXTURE', 'MATERIAL'
             ]
 
         # TODO - Add socket_data_type for input filtering
