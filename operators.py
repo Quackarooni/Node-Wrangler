@@ -2,7 +2,7 @@
 
 import bpy
 
-from bpy.types import Operator
+from bpy.types import Operator, PropertyGroup
 from bpy.props import (
     FloatProperty,
     EnumProperty,
@@ -40,6 +40,12 @@ from .utils.nodes import (node_mid_pt, get_bounds, autolink, node_at_pos, get_ac
                           is_viewer_link, get_group_output_node, get_output_location, force_update, get_internal_socket,
                           fw_check, NWBase, FinishedAutolink, get_first_enabled_output, is_visible_socket, temporary_unframe, viewer_socket_name)
 
+class NodeSetting(bpy.types.PropertyGroup):
+    value: StringProperty(
+        name="Value",
+        description="Python expression to be evaluated as the initial node setting",
+        default="",
+    )
 
 class NWLazyMix(Operator, NWBase):
     """Add a Mix RGB/Shader node by interactively drawing lines between nodes"""
@@ -931,6 +937,13 @@ class NWSwitchNodeType(Operator, NWBase):
         default='',
     )
 
+    settings: CollectionProperty(
+        name="Settings",
+        description="Settings to be applied on the newly created node",
+        type=NodeSetting,
+        options={'SKIP_SAVE'},
+    )
+
     def execute(self, context):
         to_type = self.to_type
         if len(to_type) == 0:
@@ -948,11 +961,35 @@ class NWSwitchNodeType(Operator, NWBase):
         reselect = []
         for node in [n for n in selected if
                      n.rna_type.identifier not in src_excludes and
-                     n.rna_type.identifier != to_type]:
+                     (n.rna_type.identifier != to_type or (n.rna_type.identifier in 
+                     ("ShaderNodeMix", "GeometryNodeGroup", "CompositorNodeGroup", "ShaderNodeGroup", "TextureNodeGroup")))]:
+                     
             new_node = nodes.new(to_type)
             for attr in attrs_to_pass:
                 if hasattr(node, attr) and hasattr(new_node, attr):
-                    setattr(new_node, attr, getattr(node, attr))
+                    try:
+                        setattr(new_node, attr, getattr(node, attr))
+                    except ValueError:
+                        pass
+
+            for setting in self.settings:
+                value = eval(setting.value)
+                node_data = new_node
+                node_attr_name = setting.name
+
+                # Support path to nested data.
+                if '.' in node_attr_name:
+                    node_data_path, node_attr_name = node_attr_name.rsplit(".", 1)
+                    node_data = node.path_resolve(node_data_path)
+
+                try:
+                    setattr(node_data, node_attr_name, value)
+                except AttributeError as e:
+                    self.report(
+                        {'ERROR_INVALID_INPUT'},
+                        "Node has no attribute " + setting.name)
+                    print(str(e))
+
             # set image datablock of dst to image of src
             if hasattr(node, 'image') and hasattr(new_node, 'image'):
                 if node.image:
@@ -960,6 +997,8 @@ class NWSwitchNodeType(Operator, NWBase):
             # Special cases
             if new_node.type == 'SWITCH':
                 new_node.hide = True
+
+
             # Dictionaries: src_sockets and dst_sockets:
             # 'INPUTS': input sockets ordered by type (entry 'MAIN' main type of inputs).
             # 'OUTPUTS': output sockets ordered by type (entry 'MAIN' main type of outputs).
@@ -1105,6 +1144,7 @@ class NWSwitchNodeType(Operator, NWBase):
                     if new_node.outputs:
                         links.new(new_node.outputs[0], out_src_link.to_socket)
             nodes.remove(node)
+
         force_update(context)
         return {'FINISHED'}
 
@@ -3399,6 +3439,7 @@ class NWResetNodes(bpy.types.Operator):
 
 
 classes = (
+    NodeSetting,
     NWLazyMix,
     NWLazyConnect,
     NWDeleteUnused,

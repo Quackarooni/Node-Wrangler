@@ -22,6 +22,7 @@ from bpy.props import (
 from . import operators
 from . import preferences
 from . import interface
+from . import switch_nodes_geometrymenus
 
 
 def register():
@@ -50,12 +51,14 @@ def register():
     operators.register()
     interface.register()
     preferences.register()
+    switch_nodes_geometrymenus.register()
 
 
 def unregister():
     preferences.unregister()
     interface.unregister()
     operators.unregister()
+    switch_nodes_geometrymenus.unregister()
 
     # props
     del bpy.types.Scene.NWBusyDrawing
