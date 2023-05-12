@@ -83,20 +83,22 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
     merge_binary_mode: EnumProperty(
         name="Binary Functions",
         items=(
-            ("CHAIN", "Chain Together", "Chain the output of each node one after another"),
+            ("AUTO", "Automatic", "Automatically determine what is the appropriate merge mode"),
             ("GROUP", "By Group", "Plug the selected nodes in groups of two"),
+            ("CHAIN", "Chain Together", "Chain the output of each node one after another"),
         ),
-        default='CHAIN',
+        default='AUTO',
         description="When merging nodes, specify how binary functions are handled")
 
     merge_ternary_mode: EnumProperty(
         name="Ternary Functions",
         items=(
-            ("CHAIN", "Chain Together", "Chain the output of each node one after another"),
+            ("AUTO", "Automatic", "Automatically determine what is the appropriate merge mode"),
             ("GROUP", "By Group", "Plug the selected nodes in groups of two"),
+            ("CHAIN", "Chain Together", "Chain the output of each node one after another"),
             ("AS_BINARY", "Treat as Binary", "Handle ternary functions the same way as binary functions"),
         ),
-        default='CHAIN',
+        default='AUTO',
         description="When merging nodes, specify how ternary functions are handled")
     
     merge_position: EnumProperty(
