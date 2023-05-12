@@ -1726,10 +1726,9 @@ class NWMergeNodesRefactored(Operator, NWBase):
             node.location.y += align_offset_y
 
     def execute(self, context):
-        settings = fetch_user_preferences()
-        merge_hide = settings.merge_hide
-        merge_position = settings.merge_position  # 'center' or 'bottom'
-        prefer_first_socket = False #Toggles whether to chain nodes by their first or second socket
+        prefs = fetch_user_preferences()
+        merge_hide = prefs.merge_hide
+        merge_position = prefs.merge_position  # 'center' or 'bottom'
 
         tree_type = context.space_data.node_tree.type
         nodes, links = get_nodes_links(context)
@@ -1854,6 +1853,14 @@ class NWMergeNodesRefactored(Operator, NWBase):
             subtype_name = None
             socket_data_type = ('RGBA', )
 
+
+        prefer_first_socket_binary = prefs.prefer_first_socket_binary
+        prefer_first_socket_ternary = prefs.prefer_first_socket_ternary
+
+        if function_type in ('BINARY', 'BINARY_MERGE'):
+            prefer_first_socket = prefer_first_socket_binary
+        elif function_type in ('TERNARY', 'TERNARY_MERGE'):
+            prefer_first_socket = prefer_first_socket_ternary
 
         new_nodes = []
         if function_type == 'UNARY':
@@ -1983,10 +1990,15 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 new_nodes.append(new_node)
 
         else:
+            group_size = 1
             prev_socket = None
-            generator = selected_nodes if (len(selected_nodes) == 1) else islice(selected_nodes, 1, None)
 
-            for node in generator:
+            if prefer_first_socket:
+                first_node = selected_nodes.pop(0)
+            else:
+                first_node = selected_nodes.pop(group_size)
+
+            for group in n_wise_iter(selected_nodes, n=group_size):
                 new_node = nodes.new(node_to_add)
                 new_node.hide = True
                 new_node.select = True
@@ -1997,24 +2009,23 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 if mix_type is not None:
                     new_node.data_type = mix_type
 
+                for index, node in enumerate(group, start=prefer_first_socket):
+                    if node is not None:
+                        from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
+                        to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=index)
+                        links.new(from_socket, to_socket)
+
+                chain_index = 0 if prefer_first_socket else group_size
+
                 if prev_socket is not None:
                     from_socket = prev_socket
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=not prefer_first_socket)
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=chain_index)
                     links.new(from_socket, to_socket)
-
-                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=prefer_first_socket)
-                    links.new(from_socket, to_socket)
-
                 else:
-                    from_socket = self.get_valid_socket(selected_nodes[0], mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=0)
+                    from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=preferred_input_type)
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=chain_index)
                     links.new(from_socket, to_socket)
 
-                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=1)
-                    links.new(from_socket, to_socket)
-                
                 prev_socket = self.get_valid_socket(new_node, mode='Outputs', data_types=preferred_input_type)
                 new_nodes.append(new_node)
         

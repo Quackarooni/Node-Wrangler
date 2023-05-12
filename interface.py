@@ -32,10 +32,19 @@ def drawlayout(context, layout, mode='non-panel'):
 
     if mode == 'panel':
         box = col.box()
+        show_binary = prefs.merge_binary_mode in ('AUTO', 'CHAIN')
+        show_ternary = prefs.merge_ternary_mode in ('AUTO', 'CHAIN')
+
         box.label(text="Binary Merge Mode:")
         box.prop(prefs, "merge_binary_mode", text="")
+        if show_binary:
+            box.prop(prefs, "prefer_first_socket_binary")
+
         box.label(text="Ternary Merge Mode:")
         box.prop(prefs, "merge_ternary_mode", text="")
+        if show_ternary:
+            box.prop(prefs, "prefer_first_socket_ternary")
+
     col.separator()
 
     col = layout.column(align=True)

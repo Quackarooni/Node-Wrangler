@@ -110,6 +110,18 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
         default='CENTER',
         description="When merging nodes with the Ctrl+Numpad0 hotkey (and similar) specify the position of the new nodes")
 
+    prefer_first_socket_binary: BoolProperty(
+        name="Prefer First Socket",
+        default=True,
+        description="When chaining binary nodes together, specify whether the output of the previous node goes in the first or last socket of the next node"
+    )
+
+    prefer_first_socket_ternary: BoolProperty(
+        name="Prefer First Socket",
+        default=True,
+        description="When chaining ternary nodes together, specify whether the output of the previous node goes in the first or last socket of the next node"
+    )
+
     show_hotkey_list: BoolProperty(
         name="Show Hotkey List",
         default=False,
