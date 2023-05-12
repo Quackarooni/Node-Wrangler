@@ -22,12 +22,28 @@ from .utils.constants import (
     )
 from .utils.nodes import get_nodes_links, fw_check, NWBase
 
+def fetch_user_preferences(attr_id=None):
+    prefs = bpy.context.preferences.addons[__package__].preferences
+
+    if attr_id is None:
+        return prefs
+    else:
+        return getattr(prefs, attr_id)
+
 
 def drawlayout(context, layout, mode='non-panel'):
     tree_type = context.space_data.tree_type
+    prefs = fetch_user_preferences()
 
     col = layout.column(align=True)
     col.menu(NWMergeNodesMenu.bl_idname)
+
+    if mode == 'panel':
+        box = col.box()
+        box.label(text="Binary Merge Mode:")
+        box.prop(prefs, "merge_binary_mode", text="")
+        box.label(text="Ternary Merge Mode:")
+        box.prop(prefs, "merge_ternary_mode", text="")
     col.separator()
 
     col = layout.column(align=True)

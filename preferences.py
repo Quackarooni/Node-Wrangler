@@ -79,6 +79,26 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
         ),
         default='NON_SHADER',
         description="When merging nodes with the Ctrl+Numpad0 hotkey (and similar) specify whether to collapse them or show the full node with options expanded")
+
+    merge_binary_mode: EnumProperty(
+        name="Binary Functions",
+        items=(
+            ("CHAIN", "Chain Together", "Chain the output of each node one after another"),
+            ("GROUP", "By Group", "Plug the selected nodes in groups of two"),
+        ),
+        default='CHAIN',
+        description="When merging nodes, specify how binary functions are handled")
+
+    merge_ternary_mode: EnumProperty(
+        name="Ternary Functions",
+        items=(
+            ("CHAIN", "Chain Together", "Chain the output of each node one after another"),
+            ("GROUP", "By Group", "Plug the selected nodes in groups of two"),
+            ("AS_BINARY", "Treat as Binary", "Handle ternary functions the same way as binary functions"),
+        ),
+        default='CHAIN',
+        description="When merging nodes, specify how ternary functions are handled")
+    
     merge_position: EnumProperty(
         name="Mix Node Position",
         items=(

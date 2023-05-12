@@ -1869,7 +1869,6 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 links.new(first_from_socket, first_to_socket)
         
         elif function_type == 'BINARY_MERGE':
-            #for node_1, node_2 in by_pair(selected_nodes):
             for node_1, node_2, in n_wise_iter(selected_nodes, n=2):
                 new_node = nodes.new(node_to_add)
                 new_node.hide = True
