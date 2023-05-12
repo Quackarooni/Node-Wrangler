@@ -1899,7 +1899,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 links.new(first_from_socket, first_to_socket)
         
         elif function_type == 'BINARY_MERGE':
-            for node_1, node_2, in n_wise_iter(selected_nodes, n=2):
+            for group in n_wise_iter(selected_nodes, n=2):
                 new_node = nodes.new(node_to_add)
                 new_node.hide = True
                 new_node.select = True
@@ -1910,20 +1910,16 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 if mix_type is not None:
                     new_node.data_type = mix_type
 
-                if node_1 is not None:
-                    from_socket = self.get_valid_socket(node_1, mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=0)
-                    links.new(from_socket, to_socket)
+                for index, node in enumerate(group):
+                    if node is not None:
+                        from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
+                        to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=index)
+                        links.new(from_socket, to_socket)
 
-                if node_2 is not None:
-                    from_socket = self.get_valid_socket(node_2, mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=1)
-                    links.new(from_socket, to_socket)
-
-                new_nodes.append(new_node)        
+                new_nodes.append(new_node)   
                 
         elif function_type in ('TERNARY', 'TERNARY_MERGE'):
-            for node_1, node_2, node_3 in n_wise_iter(selected_nodes, n=3):
+            for group in n_wise_iter(selected_nodes, n=3):
                 new_node = nodes.new(node_to_add)
                 new_node.hide = True
                 new_node.select = True
@@ -1934,20 +1930,11 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 if mix_type is not None:
                     new_node.data_type = mix_type
 
-                if node_1 is not None:
-                    from_socket = self.get_valid_socket(node_1, mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=0)
-                    links.new(from_socket, to_socket)
-
-                if node_2 is not None:
-                    from_socket = self.get_valid_socket(node_2, mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=1)
-                    links.new(from_socket, to_socket)
-
-                if node_3 is not None:
-                    from_socket = self.get_valid_socket(node_3, mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=2)
-                    links.new(from_socket, to_socket)
+                for index, node in enumerate(group):
+                    if node is not None:
+                        from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
+                        to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=index)
+                        links.new(from_socket, to_socket)
 
                 new_nodes.append(new_node)
 
