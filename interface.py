@@ -20,15 +20,7 @@ from .utils.constants import (
     boolean_operations,
     boolean_operations_menu_dict
     )
-from .utils.nodes import get_nodes_links, fw_check, NWBase
-
-def fetch_user_preferences(attr_id=None):
-    prefs = bpy.context.preferences.addons[__package__].preferences
-
-    if attr_id is None:
-        return prefs
-    else:
-        return getattr(prefs, attr_id)
+from .utils.nodes import get_nodes_links, fw_check, NWBase, fetch_user_preferences
 
 
 def drawlayout(context, layout, mode='non-panel'):

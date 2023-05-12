@@ -3,6 +3,16 @@
 import bpy
 from math import hypot
 
+
+def fetch_user_preferences(attr_id=None):
+    prefs = bpy.context.preferences.addons["Node Wrangler"].preferences
+
+    if attr_id is None:
+        return prefs
+    else:
+        return getattr(prefs, attr_id)
+
+
 def connect_sockets(input, output):
     """
     Connect sockets in a node tree.

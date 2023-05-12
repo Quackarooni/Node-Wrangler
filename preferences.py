@@ -68,7 +68,7 @@ class NWPrincipledPreferences(bpy.types.PropertyGroup):
 
 # Addon prefs
 class NWNodeWrangler(bpy.types.AddonPreferences):
-    bl_idname = __package__
+    bl_idname = "Node Wrangler"
 
     merge_hide: EnumProperty(
         name="Hide Mix nodes",
