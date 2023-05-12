@@ -1604,7 +1604,6 @@ class NWMergeNodesRefactored(Operator, NWBase):
     def get_function_type(operation_name):
 
         prefs = fetch_user_preferences()
-
         unary_ops = [
             #Boolean Ops
             'NOT',
@@ -1636,23 +1635,44 @@ class NWMergeNodesRefactored(Operator, NWBase):
             'DOT_PRODUCT', 'DISTANCE'
         ]
 
+        ternary_ops = [
+            #Math & Vector Ops
+            'MULTIPLY_ADD', 'WRAP', 'SMOOTH_MIN', 'SMOOTH_MAX', 'COMPARE', 'FACEFORWARD'
+        ]
+
+        temp_type = 'TERNARY' if operation_name in ternary_ops else 'BINARY'
+
         if operation_name in unary_ops:
             return 'UNARY'
         elif operation_name in batch_ops:
             return 'BATCH'
-        else:
-            merge_mode = prefs.merge_binary_mode
+
+        elif operation_name in batch_ops:
+            return 'BATCH'
+
+        if temp_type == 'TERNARY':
+            merge_mode = prefs.merge_ternary_mode
 
             if merge_mode == 'AUTO':
-                if operation_name in binary_merge_ops:
-                    return 'BINARY_MERGE'
-                else:
-                    return 'BINARY'
-                    
+                return 'TERNARY'
             elif merge_mode == 'CHAIN':
-                return 'BINARY'
+                return 'TERNARY'
             elif merge_mode == 'GROUP':
+                return 'TERNARY_MERGE'            
+
+
+        merge_mode = prefs.merge_binary_mode
+
+        if merge_mode == 'AUTO':
+            if operation_name in binary_merge_ops:
                 return 'BINARY_MERGE'
+            else:
+                return 'BINARY'
+
+        elif merge_mode == 'CHAIN':
+            return 'BINARY'
+        elif merge_mode == 'GROUP':
+            return 'BINARY_MERGE'
 
 
     @staticmethod
@@ -1898,6 +1918,35 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 if node_2 is not None:
                     from_socket = self.get_valid_socket(node_2, mode='Outputs', data_types=preferred_input_type)
                     to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=1)
+                    links.new(from_socket, to_socket)
+
+                new_nodes.append(new_node)        
+                
+        elif function_type in ('TERNARY', 'TERNARY_MERGE'):
+            for node_1, node_2, node_3 in n_wise_iter(selected_nodes, n=3):
+                new_node = nodes.new(node_to_add)
+                new_node.hide = True
+                new_node.select = True
+
+                if subtype_name is not None:
+                    setattr(new_node, subtype_name, operation_type)
+
+                if mix_type is not None:
+                    new_node.data_type = mix_type
+
+                if node_1 is not None:
+                    from_socket = self.get_valid_socket(node_1, mode='Outputs', data_types=preferred_input_type)
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=0)
+                    links.new(from_socket, to_socket)
+
+                if node_2 is not None:
+                    from_socket = self.get_valid_socket(node_2, mode='Outputs', data_types=preferred_input_type)
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=1)
+                    links.new(from_socket, to_socket)
+
+                if node_3 is not None:
+                    from_socket = self.get_valid_socket(node_3, mode='Outputs', data_types=preferred_input_type)
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=2)
                     links.new(from_socket, to_socket)
 
                 new_nodes.append(new_node)
