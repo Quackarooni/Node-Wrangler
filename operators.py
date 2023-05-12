@@ -1636,8 +1636,12 @@ class NWMergeNodesRefactored(Operator, NWBase):
         ]
 
         ternary_ops = [
+            #Math Ops
+            'SMOOTH_MIN', 'SMOOTH_MAX', 'COMPARE', 
+            #Vector Ops
+            'FACEFORWARD',
             #Math & Vector Ops
-            'MULTIPLY_ADD', 'WRAP', 'SMOOTH_MIN', 'SMOOTH_MAX', 'COMPARE', 'FACEFORWARD'
+            'MULTIPLY_ADD', 'WRAP', 
         ]
 
         temp_type = 'TERNARY' if operation_name in ternary_ops else 'BINARY'
@@ -1654,11 +1658,11 @@ class NWMergeNodesRefactored(Operator, NWBase):
             merge_mode = prefs.merge_ternary_mode
 
             if merge_mode == 'AUTO':
-                return 'TERNARY'
+                return 'TERNARY_MERGE'
             elif merge_mode == 'CHAIN':
                 return 'TERNARY'
             elif merge_mode == 'GROUP':
-                return 'TERNARY_MERGE'            
+                return 'TERNARY_MERGE' 
 
 
         merge_mode = prefs.merge_binary_mode
@@ -1725,7 +1729,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
         settings = fetch_user_preferences()
         merge_hide = settings.merge_hide
         merge_position = settings.merge_position  # 'center' or 'bottom'
-        prefer_first_socket = True #Toggles whether to chain nodes by their first or second socket
+        prefer_first_socket = False #Toggles whether to chain nodes by their first or second socket
 
         tree_type = context.space_data.node_tree.type
         nodes, links = get_nodes_links(context)
@@ -1918,7 +1922,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
                 new_nodes.append(new_node)   
                 
-        elif function_type in ('TERNARY', 'TERNARY_MERGE'):
+        elif function_type == 'TERNARY_MERGE':
             for group in n_wise_iter(selected_nodes, n=3):
                 new_node = nodes.new(node_to_add)
                 new_node.hide = True
@@ -1936,6 +1940,46 @@ class NWMergeNodesRefactored(Operator, NWBase):
                         to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=index)
                         links.new(from_socket, to_socket)
 
+                new_nodes.append(new_node)
+
+        elif function_type == 'TERNARY':
+            group_size = 2
+            prev_socket = None
+
+            if prefer_first_socket:
+                first_node = selected_nodes.pop(0)
+            else:
+                first_node = selected_nodes.pop(group_size)
+
+            for group in n_wise_iter(selected_nodes, n=group_size):
+                new_node = nodes.new(node_to_add)
+                new_node.hide = True
+                new_node.select = True
+
+                if subtype_name is not None:
+                    setattr(new_node, subtype_name, operation_type)
+
+                if mix_type is not None:
+                    new_node.data_type = mix_type
+
+                for index, node in enumerate(group, start=prefer_first_socket):
+                    if node is not None:
+                        from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
+                        to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=index)
+                        links.new(from_socket, to_socket)
+
+                chain_index = 0 if prefer_first_socket else group_size
+
+                if prev_socket is not None:
+                    from_socket = prev_socket
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=chain_index)
+                    links.new(from_socket, to_socket)
+                else:
+                    from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=preferred_input_type)
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=chain_index)
+                    links.new(from_socket, to_socket)
+
+                prev_socket = self.get_valid_socket(new_node, mode='Outputs', data_types=preferred_input_type)
                 new_nodes.append(new_node)
 
         else:
