@@ -36,7 +36,7 @@ from .utils.constants import (
     )
 from .utils.draw import draw_callback_nodeoutline
 from .utils.paths import match_files_to_socket_names, split_into_components
-from .utils.nodes import (node_mid_pt, get_bounds, autolink, node_at_pos, get_active_tree, get_nodes_links, is_viewer_socket,
+from .utils.nodes import (node_mid_pt, get_bounds, fetch_user_preferences, autolink, node_at_pos, get_active_tree, get_nodes_links, is_viewer_socket,
                           is_viewer_link, get_group_output_node, get_output_location, force_update, get_internal_socket,
                           fw_check, NWBase, FinishedAutolink, get_first_enabled_output, is_visible_socket, temporary_unframe, viewer_socket_name)
 
@@ -1603,6 +1603,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
     @staticmethod
     def get_function_type(operation_name):
 
+        prefs = fetch_user_preferences()
 
         unary_ops = [
             #Boolean Ops
@@ -1639,10 +1640,19 @@ class NWMergeNodesRefactored(Operator, NWBase):
             return 'UNARY'
         elif operation_name in batch_ops:
             return 'BATCH'
-        elif operation_name in binary_merge_ops:
-            return 'BINARY_MERGE'
         else:
-            return 'BINARY'
+            merge_mode = prefs.merge_binary_mode
+
+            if merge_mode == 'AUTO':
+                if operation_name in binary_merge_ops:
+                    return 'BINARY_MERGE'
+                else:
+                    return 'BINARY'
+                    
+            elif merge_mode == 'CHAIN':
+                return 'BINARY'
+            elif merge_mode == 'GROUP':
+                return 'BINARY_MERGE'
 
 
     @staticmethod
@@ -1692,7 +1702,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
             node.location.y += align_offset_y
 
     def execute(self, context):
-        settings = context.preferences.addons[__package__].preferences
+        settings = fetch_user_preferences()
         merge_hide = settings.merge_hide
         merge_position = settings.merge_position  # 'center' or 'bottom'
         prefer_first_socket = True #Toggles whether to chain nodes by their first or second socket
