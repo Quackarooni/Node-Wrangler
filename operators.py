@@ -18,7 +18,7 @@ from mathutils import Vector
 from os import path
 from glob import glob
 from copy import copy
-from itertools import chain, islice
+from itertools import chain, islice, zip_longest
 
 from .interface import NWConnectionListInputs, NWConnectionListOutputs
 
@@ -1553,6 +1553,15 @@ class NWMergeNodes(Operator, NWBase):
 
         return {'FINISHED'}
 
+def by_pair(iterable):
+    "s -> (s0, s1), (s2, s3), (s4, s5), ..."
+    a = iter(iterable)
+    return zip_longest(a, a)
+
+def n_wise_iter(iterable, n):
+    "s -> (s0,s1,s2,...sn-1), (sn,sn+1,sn+2,...s2n-1), (s2n,s2n+1,s2n+2,...s3n-1), ..."
+    return zip_longest(*[iter(iterable)]*n)
+
 class NWMergeNodesRefactored(Operator, NWBase):
     bl_idname = "node.fw_merge_nodes_refactored"
     bl_label = "Merge Nodes"
@@ -1599,7 +1608,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
             #Boolean Ops
             'NOT',
             #Vector Ops
-            'NORMALIZE','LENGTH','ABSOLUTE','FRACTION','FLOOR','CEIL','SINE','COSINE','TANGENT',
+            'NORMALIZE','LENGTH','ABSOLUTE','FRACTION', 'SCALE', 'FLOOR','CEIL','SINE','COSINE','TANGENT',
             #Math Ops
             'SQRT','INVERSE_SQRT','ABSOLUTE','EXPONENT','SIGN','ROUND','TRUNC','FRACT',
             'ARCSINE','ARCCOSINE','ARCTANGENT','SINH','COSH','TANH','RADIANS','DEGREES',
@@ -1620,10 +1629,18 @@ class NWMergeNodesRefactored(Operator, NWBase):
             'INTERSECT',
         ]
 
+
+        binary_merge_ops = [
+            #Vector Ops
+            'DOT_PRODUCT', 'DISTANCE'
+        ]
+
         if operation_name in unary_ops:
             return 'UNARY'
         elif operation_name in batch_ops:
             return 'BATCH'
+        elif operation_name in binary_merge_ops:
+            return 'BINARY_MERGE'
         else:
             return 'BINARY'
 
@@ -1850,6 +1867,31 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 first_from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=preferred_input_type)
 
                 links.new(first_from_socket, first_to_socket)
+        
+        elif function_type == 'BINARY_MERGE':
+            #for node_1, node_2 in by_pair(selected_nodes):
+            for node_1, node_2, in n_wise_iter(selected_nodes, n=2):
+                new_node = nodes.new(node_to_add)
+                new_node.hide = True
+                new_node.select = True
+
+                if subtype_name is not None:
+                    setattr(new_node, subtype_name, operation_type)
+
+                if mix_type is not None:
+                    new_node.data_type = mix_type
+
+                if node_1 is not None:
+                    from_socket = self.get_valid_socket(node_1, mode='Outputs', data_types=preferred_input_type)
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=0)
+                    links.new(from_socket, to_socket)
+
+                if node_2 is not None:
+                    from_socket = self.get_valid_socket(node_2, mode='Outputs', data_types=preferred_input_type)
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=1)
+                    links.new(from_socket, to_socket)
+
+                new_nodes.append(new_node)
 
         else:
             prev_socket = None
