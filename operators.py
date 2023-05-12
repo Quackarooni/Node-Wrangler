@@ -1568,7 +1568,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
     bl_description = "Merge Selected Nodes"
     bl_options = {'REGISTER', 'UNDO'}
 
-    mode: EnumProperty(
+    operation: EnumProperty(
         name="mode",
         description="All possible blend types, boolean operations and math operations",
         default='NONE',
@@ -1707,7 +1707,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
         #TODO - Implement Sizes between different nodes, in both cases of vertical and horizontal alignment
 
-        if self.mode == 'STRING_TO_CURVES':
+        if self.operation == 'STRING_TO_CURVES':
             offset_size = 50
         else:
             offset_size = 30
@@ -1734,7 +1734,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
         nodes, links = get_nodes_links(context)
 
         #TODO - Fetch operation type and subtype function
-        operation_type = self.mode
+        operation_type = self.operation
         function_type = self.get_function_type(operation_type)
         merge_type = self.merge_type
 

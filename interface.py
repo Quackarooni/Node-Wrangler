@@ -182,7 +182,7 @@ class NWMergeGeometryMenu(Menu, NWBase):
         # The boolean node + Join Geometry node
         for operation, name, description in geo_combine_operations:
             props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
-            props.mode = operation
+            props.operation = operation
             props.merge_type = 'GEOMETRY'
 
 
@@ -200,7 +200,7 @@ class NWMergeShadersMenu(Menu, NWBase):
                     props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
             else:
                 props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
-            props.mode = operation
+            props.operation = operation
             props.merge_type = 'SHADER'
 
 
@@ -217,7 +217,7 @@ class NWMergeMixMenu(Menu, NWBase):
             col.separator(factor=1.0)
             for operation, name, description in items:
                 props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name, icon='NONE')
-                props.mode = operation
+                props.operation = operation
                 props.merge_type = 'MIX_COLOR'   
 
 
@@ -238,7 +238,7 @@ class NWMergeMathMenu(Menu, NWBase):
                     col.separator(factor=1.0)
                 else:
                     props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name, icon='NONE')
-                    props.mode = operation
+                    props.operation = operation
                     props.merge_type = 'MATH'
 
 
@@ -259,7 +259,7 @@ class NWMergeVectorMathMenu(Menu, NWBase):
                     col.separator(factor=1.0)
                 else:
                     props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name, icon='NONE')
-                    props.mode = operation
+                    props.operation = operation
                     props.merge_type = 'VECTOR'
 
 
@@ -271,7 +271,7 @@ class NWMergeStringMenu(Menu, NWBase):
         layout = self.layout
         for operation, name, description in string_operations:
             props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
-            props.mode = operation
+            props.operation = operation
             props.merge_type = 'STRING'
 
 class NWMergeBoolMenu(Menu, NWBase):
@@ -287,7 +287,7 @@ class NWMergeBoolMenu(Menu, NWBase):
             col.separator(factor=1.0)
             for operation, name, description in items:
                 props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
-                props.mode = operation
+                props.operation = operation
                 props.merge_type = 'BOOLEAN'
 
 
