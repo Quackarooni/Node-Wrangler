@@ -575,7 +575,7 @@ def save_viewer_menu_func(self, context):
 def reset_nodes_button(self, context):
     node_active = context.active_node
     node_selected = context.selected_nodes
-    node_ignore = ["FRAME", "REROUTE", "GROUP"]
+    node_ignore = ["FRAME", "REROUTE", "GROUP", "SIMULATION_INPUT", "SIMULATION_OUTPUT"]
 
     # Check if active node is in the selection and respective type
     if (len(node_selected) == 1) and node_active and node_active.select and node_active.type not in node_ignore:
