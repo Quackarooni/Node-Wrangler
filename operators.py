@@ -1751,6 +1751,49 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
         return (new_node, new_nodes)
 
+    def chain_merge(self, context, selected_nodes, data, group_size):
+        nodes, links = get_nodes_links(context)
+        operation_type = self.operation
+
+        new_nodes = []
+        if data.prefer_first_socket:
+            first_node = selected_nodes.pop(0)
+        else:
+            first_node = selected_nodes.pop(group_size)
+
+        prev_socket = None
+        for group in n_wise_iter(selected_nodes, n=group_size):
+            new_node = nodes.new(data.node_to_add)
+            new_node.hide = True
+            new_node.select = True
+
+            if data.subtype_name is not None:
+                setattr(new_node, data.subtype_name, operation_type)
+
+            if data.mix_type is not None:
+                new_node.data_type = data.mix_type
+
+            for index, node in enumerate(group, start=data.prefer_first_socket):
+                if node is not None:
+                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=data.preferred_input_type)
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=data.socket_data_type, target_index=index)
+                    links.new(from_socket, to_socket)
+
+            chain_index = 0 if data.prefer_first_socket else group_size
+
+            if prev_socket is not None:
+                from_socket = prev_socket
+                to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=data.socket_data_type, target_index=chain_index)
+                links.new(from_socket, to_socket)
+            else:
+                from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=data.preferred_input_type)
+                to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=data.socket_data_type, target_index=chain_index)
+                links.new(from_socket, to_socket)
+
+            prev_socket = self.get_valid_socket(new_node, mode='Outputs', data_types=data.preferred_input_type)
+            new_nodes.append(new_node)
+
+        return (new_node, new_nodes)
 
     def execute(self, context):
         prefs = fetch_user_preferences()
@@ -1790,6 +1833,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
         from typing import NamedTuple
 
         class NodeData(NamedTuple):
+            prefer_first_socket : bool
             node_to_add : str
             subtype_name : str
             mix_type : str
@@ -1904,7 +1948,8 @@ class NWMergeNodesRefactored(Operator, NWBase):
             node_to_add=node_to_add, 
             subtype_name=subtype_name, 
             operation_type=operation_type, 
-            mix_type=mix_type, 
+            mix_type=mix_type,
+            prefer_first_socket = prefer_first_socket,
             preferred_input_type=preferred_input_type, 
             socket_data_type=socket_data_type
             )
@@ -1942,92 +1987,21 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
                 links.new(first_from_socket, first_to_socket)
         
-        elif function_type == 'BINARY_MERGE':
-            new_node, new_nodes = self.group_merge(context, selected_nodes, data, group_size=2)
-                
         elif function_type == 'TERNARY_MERGE':
             new_node, new_nodes = self.group_merge(context, selected_nodes, data, group_size=3)
 
+        elif function_type == 'BINARY_MERGE':
+            new_node, new_nodes = self.group_merge(context, selected_nodes, data, group_size=2)
+                
         elif function_type == 'TERNARY':
-            group_size = 2
-            prev_socket = None
+            new_node, new_nodes = self.chain_merge(context, selected_nodes, data, group_size=2)
 
-            if prefer_first_socket:
-                first_node = selected_nodes.pop(0)
-            else:
-                first_node = selected_nodes.pop(group_size)
-
-            for group in n_wise_iter(selected_nodes, n=group_size):
-                new_node = nodes.new(node_to_add)
-                new_node.hide = True
-                new_node.select = True
-
-                if subtype_name is not None:
-                    setattr(new_node, subtype_name, operation_type)
-
-                if mix_type is not None:
-                    new_node.data_type = mix_type
-
-                for index, node in enumerate(group, start=prefer_first_socket):
-                    if node is not None:
-                        from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                        to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=index)
-                        links.new(from_socket, to_socket)
-
-                chain_index = 0 if prefer_first_socket else group_size
-
-                if prev_socket is not None:
-                    from_socket = prev_socket
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=chain_index)
-                    links.new(from_socket, to_socket)
-                else:
-                    from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=chain_index)
-                    links.new(from_socket, to_socket)
-
-                prev_socket = self.get_valid_socket(new_node, mode='Outputs', data_types=preferred_input_type)
-                new_nodes.append(new_node)
-
-        else:
-            group_size = 1
-            prev_socket = None
-
-            if prefer_first_socket:
-                first_node = selected_nodes.pop(0)
-            else:
-                first_node = selected_nodes.pop(group_size)
-
-            for group in n_wise_iter(selected_nodes, n=group_size):
-                new_node = nodes.new(node_to_add)
-                new_node.hide = True
-                new_node.select = True
-
-                if subtype_name is not None:
-                    setattr(new_node, subtype_name, operation_type)
-
-                if mix_type is not None:
-                    new_node.data_type = mix_type
-
-                for index, node in enumerate(group, start=prefer_first_socket):
-                    if node is not None:
-                        from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                        to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=index)
-                        links.new(from_socket, to_socket)
-
-                chain_index = 0 if prefer_first_socket else group_size
-
-                if prev_socket is not None:
-                    from_socket = prev_socket
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=chain_index)
-                    links.new(from_socket, to_socket)
-                else:
-                    from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=chain_index)
-                    links.new(from_socket, to_socket)
-
-                prev_socket = self.get_valid_socket(new_node, mode='Outputs', data_types=preferred_input_type)
-                new_nodes.append(new_node)
+        elif function_type == 'BINARY':
+            new_node, new_nodes = self.chain_merge(context, selected_nodes, data, group_size=1)
         
+        else:
+            raise NotImplementedError(f"Function type '{function_type}', does not have a supported implementation")
+
         #Set last added node to active
         context.space_data.node_tree.nodes.active = new_node
         self.arrange_nodes(new_nodes, align_point=align_point)
