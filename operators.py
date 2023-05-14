@@ -1750,7 +1750,8 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
             new_nodes.append(new_node)
 
-        return (new_node, new_nodes)
+        context.space_data.node_tree.nodes.active = new_node
+        return new_nodes
 
     def chain_merge(self, context, selected_nodes, data, group_size):
         nodes, links = get_nodes_links(context)
@@ -1794,7 +1795,8 @@ class NWMergeNodesRefactored(Operator, NWBase):
             prev_socket = self.get_valid_socket(new_node, mode='Outputs', data_types=data.preferred_input_type)
             new_nodes.append(new_node)
 
-        return (new_node, new_nodes)
+        context.space_data.node_tree.nodes.active = new_node
+        return new_nodes
 
     def execute(self, context):
         prefs = fetch_user_preferences()
@@ -1956,7 +1958,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
         new_nodes = []
         if function_type == 'UNARY':
-            new_node, new_nodes = self.group_merge(context, selected_nodes, data, group_size=1)
+            new_nodes = self.group_merge(context, selected_nodes, data, group_size=1)
 
         elif function_type == 'BATCH':
             new_node = nodes.new(node_to_add)
@@ -1986,24 +1988,25 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 first_from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=preferred_input_type)
 
                 links.new(first_from_socket, first_to_socket)
+
+            context.space_data.node_tree.nodes.active = new_node
         
         elif function_type == 'TERNARY_MERGE':
-            new_node, new_nodes = self.group_merge(context, selected_nodes, data, group_size=3)
+            new_nodes = self.group_merge(context, selected_nodes, data, group_size=3)
 
         elif function_type == 'BINARY_MERGE':
-            new_node, new_nodes = self.group_merge(context, selected_nodes, data, group_size=2)
+            new_nodes = self.group_merge(context, selected_nodes, data, group_size=2)
                 
         elif function_type == 'TERNARY':
-            new_node, new_nodes = self.chain_merge(context, selected_nodes, data, group_size=2)
+            new_nodes = self.chain_merge(context, selected_nodes, data, group_size=2)
 
         elif function_type == 'BINARY':
-            new_node, new_nodes = self.chain_merge(context, selected_nodes, data, group_size=1)
+            new_nodes = self.chain_merge(context, selected_nodes, data, group_size=1)
         
         else:
             raise NotImplementedError(f"Function type '{function_type}', does not have a supported implementation")
 
         #Set last added node to active
-        context.space_data.node_tree.nodes.active = new_node
         self.arrange_nodes(new_nodes, align_point=align_point)
 
         return {'FINISHED'}
