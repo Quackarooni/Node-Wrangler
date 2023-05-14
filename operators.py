@@ -1640,7 +1640,9 @@ class NWMergeNodesRefactored(Operator, NWBase):
             #Vector Ops
             'FACEFORWARD',
             #Math & Vector Ops
-            'MULTIPLY_ADD', 'WRAP', 
+            'MULTIPLY_ADD', 'WRAP',            
+            #String Ops
+            'REPLACE',
         ]
 
         temp_type = 'TERNARY' if operation_name in ternary_ops else 'BINARY'
