@@ -1602,7 +1602,6 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
     @staticmethod
     def get_function_type(operation_name):
-
         prefs = fetch_user_preferences()
         unary_ops = [
             #Boolean Ops
@@ -1827,8 +1826,6 @@ class NWMergeNodesRefactored(Operator, NWBase):
             #'GEOMETRY', #Exclude geometry sockets as inputs by default
             'COLLECTION', 'TEXTURE', 'MATERIAL'
             ]
-
-        # TODO - Add socket_data_type for input filtering
         
         from typing import NamedTuple
 
@@ -1939,6 +1936,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
         prefer_first_socket_binary = prefs.prefer_first_socket_binary
         prefer_first_socket_ternary = prefs.prefer_first_socket_ternary
 
+        prefer_first_socket = None
         if function_type in ('BINARY', 'BINARY_MERGE'):
             prefer_first_socket = prefer_first_socket_binary
         elif function_type in ('TERNARY', 'TERNARY_MERGE'):
