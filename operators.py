@@ -1698,7 +1698,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 raise IndexError
                 
 
-    def arrange_nodes(self, context, nodes, align_point=(0, 0)):
+    def arrange_nodes(self, nodes, align_point=(0, 0)):
         current_pos = 0
         margin = 15
         x_spacing_offset = 120
@@ -1724,6 +1724,33 @@ class NWMergeNodesRefactored(Operator, NWBase):
         for node in nodes:
             node.location.x = align_offset_x + x_spacing_offset
             node.location.y += align_offset_y
+
+    def group_merge(self, context, selected_nodes, data, group_size):
+        nodes, links = get_nodes_links(context)
+        operation_type = self.operation
+
+        new_nodes = []
+        for group in n_wise_iter(selected_nodes, n=group_size):
+            new_node = nodes.new(data.node_to_add)
+            new_node.hide = True
+            new_node.select = True
+
+            if data.subtype_name is not None:
+                setattr(new_node, data.subtype_name, operation_type)
+
+            if data.mix_type is not None:
+                new_node.data_type = data.mix_type
+
+            for index, node in enumerate(group):
+                if node is not None:
+                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=data.preferred_input_type)
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=data.socket_data_type, target_index=index)
+                    links.new(from_socket, to_socket)
+
+            new_nodes.append(new_node)
+
+        return (new_node, new_nodes)
+
 
     def execute(self, context):
         prefs = fetch_user_preferences()
@@ -1760,6 +1787,17 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
         # TODO - Add socket_data_type for input filtering
         
+        from typing import NamedTuple
+
+        class NodeData(NamedTuple):
+            node_to_add : str
+            subtype_name : str
+            mix_type : str
+            operation_type : str
+            socket_data_type : tuple
+            preferred_input_type : tuple
+
+
         if merge_type == 'VECTOR':
             node_to_add = 'ShaderNodeVectorMath'
             subtype_name = "operation"
@@ -1818,8 +1856,8 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 }
 
             node_to_add = lookup_dict[operation_type]
-            socket_data_type = ('GEOMETRY')
-            preferred_input_type = ['GEOMETRY']
+            socket_data_type = ('GEOMETRY', )
+            preferred_input_type = ('GEOMETRY', )
             subtype_name = None
 
             if node_to_add == 'GeometryNodeMeshBoolean':
@@ -1862,23 +1900,18 @@ class NWMergeNodesRefactored(Operator, NWBase):
         elif function_type in ('TERNARY', 'TERNARY_MERGE'):
             prefer_first_socket = prefer_first_socket_ternary
 
+        data = NodeData(
+            node_to_add=node_to_add, 
+            subtype_name=subtype_name, 
+            operation_type=operation_type, 
+            mix_type=mix_type, 
+            preferred_input_type=preferred_input_type, 
+            socket_data_type=socket_data_type
+            )
+
         new_nodes = []
         if function_type == 'UNARY':
-            prev_socket = None
-
-            for node in selected_nodes:
-                new_node = nodes.new(node_to_add)
-                new_node.hide = True
-                new_node.select = True
-                
-                if subtype_name is not None:
-                    setattr(new_node, subtype_name, operation_type)
-
-                from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type)
-
-                links.new(from_socket, to_socket)
-                new_nodes.append(new_node)
+            new_node, new_nodes = self.group_merge(context, selected_nodes, data, group_size=1)
 
         elif function_type == 'BATCH':
             new_node = nodes.new(node_to_add)
@@ -1910,44 +1943,10 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 links.new(first_from_socket, first_to_socket)
         
         elif function_type == 'BINARY_MERGE':
-            for group in n_wise_iter(selected_nodes, n=2):
-                new_node = nodes.new(node_to_add)
-                new_node.hide = True
-                new_node.select = True
-
-                if subtype_name is not None:
-                    setattr(new_node, subtype_name, operation_type)
-
-                if mix_type is not None:
-                    new_node.data_type = mix_type
-
-                for index, node in enumerate(group):
-                    if node is not None:
-                        from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                        to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=index)
-                        links.new(from_socket, to_socket)
-
-                new_nodes.append(new_node)   
+            new_node, new_nodes = self.group_merge(context, selected_nodes, data, group_size=2)
                 
         elif function_type == 'TERNARY_MERGE':
-            for group in n_wise_iter(selected_nodes, n=3):
-                new_node = nodes.new(node_to_add)
-                new_node.hide = True
-                new_node.select = True
-
-                if subtype_name is not None:
-                    setattr(new_node, subtype_name, operation_type)
-
-                if mix_type is not None:
-                    new_node.data_type = mix_type
-
-                for index, node in enumerate(group):
-                    if node is not None:
-                        from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                        to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=index)
-                        links.new(from_socket, to_socket)
-
-                new_nodes.append(new_node)
+            new_node, new_nodes = self.group_merge(context, selected_nodes, data, group_size=3)
 
         elif function_type == 'TERNARY':
             group_size = 2
@@ -2031,7 +2030,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
         
         #Set last added node to active
         context.space_data.node_tree.nodes.active = new_node
-        self.arrange_nodes(context, new_nodes, align_point=align_point)
+        self.arrange_nodes(new_nodes, align_point=align_point)
 
         return {'FINISHED'}
 

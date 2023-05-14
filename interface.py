@@ -29,6 +29,7 @@ def drawlayout(context, layout, mode='non-panel'):
 
     col = layout.column(align=True)
     col.menu(NWMergeNodesMenu.bl_idname)
+    col.separator()
 
     if mode == 'panel':
         box = col.box()
