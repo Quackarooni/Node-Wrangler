@@ -1757,6 +1757,25 @@ class NWMergeNodesRefactored(Operator, NWBase):
         nodes, links = get_nodes_links(context)
         operation_type = self.operation
 
+        if len(selected_nodes) <= group_size + 1:
+            new_node = nodes.new(data.node_to_add)
+            new_node.hide = True
+            new_node.select = True  
+
+            if data.subtype_name is not None:
+                setattr(new_node, data.subtype_name, operation_type)
+
+            if data.mix_type is not None:
+                new_node.data_type = data.mix_type
+
+            for index, node in enumerate(selected_nodes):
+                from_socket = self.get_valid_socket(node, mode='Outputs', data_types=data.preferred_input_type)
+                to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=data.socket_data_type, target_index=index)
+                links.new(from_socket, to_socket)
+
+            context.space_data.node_tree.nodes.active = new_node
+            return [new_node, ]
+
         new_nodes = []
         if data.prefer_first_socket:
             first_node = selected_nodes.pop(0)
