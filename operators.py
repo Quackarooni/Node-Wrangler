@@ -1756,8 +1756,9 @@ class NWMergeNodesRefactored(Operator, NWBase):
     def chain_merge(self, context, selected_nodes, data, group_size):
         nodes, links = get_nodes_links(context)
         operation_type = self.operation
+        max_index = group_size - 1
 
-        if len(selected_nodes) <= group_size + 1:
+        if len(selected_nodes) <= group_size:
             new_node = nodes.new(data.node_to_add)
             new_node.hide = True
             new_node.select = True  
@@ -1780,10 +1781,10 @@ class NWMergeNodesRefactored(Operator, NWBase):
         if data.prefer_first_socket:
             first_node = selected_nodes.pop(0)
         else:
-            first_node = selected_nodes.pop(group_size)
+            first_node = selected_nodes.pop(max_index)
 
         prev_socket = None
-        for group in n_wise_iter(selected_nodes, n=group_size):
+        for group in n_wise_iter(selected_nodes, n=max_index):
             new_node = nodes.new(data.node_to_add)
             new_node.hide = True
             new_node.select = True
@@ -1800,7 +1801,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
                     to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=data.socket_data_type, target_index=index)
                     links.new(from_socket, to_socket)
 
-            chain_index = 0 if data.prefer_first_socket else group_size
+            chain_index = 0 if data.prefer_first_socket else max_index
 
             if prev_socket is not None:
                 from_socket = prev_socket
@@ -2017,10 +2018,10 @@ class NWMergeNodesRefactored(Operator, NWBase):
             new_nodes = self.group_merge(context, selected_nodes, data, group_size=2)
                 
         elif function_type == 'TERNARY':
-            new_nodes = self.chain_merge(context, selected_nodes, data, group_size=2)
+            new_nodes = self.chain_merge(context, selected_nodes, data, group_size=3)
 
         elif function_type == 'BINARY':
-            new_nodes = self.chain_merge(context, selected_nodes, data, group_size=1)
+            new_nodes = self.chain_merge(context, selected_nodes, data, group_size=2)
         
         else:
             raise NotImplementedError(f"Function type '{function_type}', does not have a supported implementation")
