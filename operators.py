@@ -1888,14 +1888,22 @@ class NWMergeNodesRefactored(Operator, NWBase):
         
         from typing import NamedTuple
 
-        class NodeData(NamedTuple):
-            prefer_first_socket : bool
+        class NodeData_Merge(NamedTuple):
             node_to_add : str
             subtype_name : str
             mix_type : str
             operation_type : str
             socket_data_type : tuple
             preferred_input_type : tuple
+
+        class NodeData_Chain(NamedTuple):
+            node_to_add : str
+            subtype_name : str
+            mix_type : str
+            operation_type : str
+            socket_data_type : tuple
+            preferred_input_type : tuple
+            prefer_first_socket : bool
 
         class NodeData_Batch(NamedTuple):
             node_to_add : str
@@ -2010,17 +2018,8 @@ class NWMergeNodesRefactored(Operator, NWBase):
         elif function_type in ('TERNARY', 'TERNARY_MERGE'):
             prefer_first_socket = prefer_first_socket_ternary
 
-        if function_type != 'BATCH':
-            data = NodeData(
-                node_to_add=node_to_add, 
-                subtype_name=subtype_name, 
-                operation_type=operation_type, 
-                mix_type=mix_type,
-                prefer_first_socket=prefer_first_socket,
-                preferred_input_type=preferred_input_type, 
-                socket_data_type=socket_data_type
-                )
-        else:
+
+        if function_type == 'BATCH':            
             data = NodeData_Batch(
                 node_to_add=node_to_add, 
                 subtype_name=subtype_name, 
@@ -2031,6 +2030,28 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 isolate_first_socket=isolate_first_socket,
                 socket_data_type=socket_data_type
                 )
+
+        elif function_type in ('BINARY_MERGE', 'TERNARY_MERGE'):
+            data = NodeData_Merge(
+                node_to_add=node_to_add, 
+                subtype_name=subtype_name, 
+                operation_type=operation_type, 
+                mix_type=mix_type,
+                preferred_input_type=preferred_input_type, 
+                socket_data_type=socket_data_type
+                )
+
+        elif function_type in ('UNARY', 'BINARY', 'TERNARY'):
+            data = NodeData_Chain(
+                node_to_add=node_to_add, 
+                subtype_name=subtype_name, 
+                operation_type=operation_type, 
+                mix_type=mix_type,
+                prefer_first_socket=prefer_first_socket,
+                preferred_input_type=preferred_input_type, 
+                socket_data_type=socket_data_type
+                )            
+
 
         new_nodes = []
         if function_type == 'UNARY':
@@ -2054,9 +2075,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
         else:
             raise NotImplementedError(f"Function type '{function_type}', does not have a supported implementation")
 
-        #Set last added node to active
         self.arrange_nodes(new_nodes, align_point=align_point)
-
         return {'FINISHED'}
 
 
