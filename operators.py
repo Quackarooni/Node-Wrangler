@@ -2031,7 +2031,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 socket_data_type=socket_data_type
                 )
 
-        elif function_type in ('BINARY_MERGE', 'TERNARY_MERGE'):
+        elif function_type in ('UNARY', 'BINARY_MERGE', 'TERNARY_MERGE'):
             data = NodeData_Merge(
                 node_to_add=node_to_add, 
                 subtype_name=subtype_name, 
@@ -2041,7 +2041,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 socket_data_type=socket_data_type
                 )
 
-        elif function_type in ('UNARY', 'BINARY', 'TERNARY'):
+        elif function_type in ('BINARY', 'TERNARY'):
             data = NodeData_Chain(
                 node_to_add=node_to_add, 
                 subtype_name=subtype_name, 
