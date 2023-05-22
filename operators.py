@@ -1818,6 +1818,40 @@ class NWMergeNodesRefactored(Operator, NWBase):
         context.space_data.node_tree.nodes.active = new_node
         return new_nodes
 
+    def batch_merge(self, context, selected_nodes, data):
+        nodes, links = get_nodes_links(context)
+        operation_type = self.operation
+
+        new_node = nodes.new(data.node_to_add)
+        new_node.hide = True
+        new_node.select = True
+
+        if data.subtype_name is not None:
+            setattr(new_node, data.subtype_name, operation_type)
+
+        batch_socket = self.get_valid_socket(new_node, mode='Inputs', 
+            data_types=data.socket_data_type, target_index=data.batch_socket_index)
+        
+        if not data.isolate_first_socket:
+            for node in reversed(selected_nodes):
+                from_socket = self.get_valid_socket(node, mode='Outputs', data_types=data.preferred_input_type)
+                links.new(from_socket, batch_socket)
+        else:
+            first_node = selected_nodes.pop(0)
+
+            for node in reversed(selected_nodes):
+                from_socket = self.get_valid_socket(node, mode='Outputs', data_types=data.preferred_input_type)
+                links.new(from_socket, batch_socket)
+
+            first_to_socket = self.get_valid_socket(new_node, mode='Inputs', 
+                data_types=data.socket_data_type, target_index=data.first_socket_index)
+            first_from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=data.preferred_input_type)
+
+            links.new(first_from_socket, first_to_socket)
+
+        context.space_data.node_tree.nodes.active = new_node
+        return [new_node, ]
+
     def execute(self, context):
         prefs = fetch_user_preferences()
         merge_hide = prefs.merge_hide
@@ -1844,6 +1878,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
         mix_type = None
         isolate_first_socket = False
+        first_socket_index = None
         preferred_input_type = [
             'CUSTOM', 'VALUE', 'INT', 'BOOLEAN', 'VECTOR', 
             'STRING', 'RGBA', 'SHADER', 'OBJECT', 'IMAGE', 
@@ -1862,6 +1897,15 @@ class NWMergeNodesRefactored(Operator, NWBase):
             socket_data_type : tuple
             preferred_input_type : tuple
 
+        class NodeData_Batch(NamedTuple):
+            node_to_add : str
+            subtype_name : str
+            operation_type : str
+            preferred_input_type : tuple 
+            isolate_first_socket : bool
+            socket_data_type : tuple
+            first_socket_index : int
+            batch_socket_index : int
 
         if merge_type == 'VECTOR':
             node_to_add = 'ShaderNodeVectorMath'
@@ -1966,51 +2010,35 @@ class NWMergeNodesRefactored(Operator, NWBase):
         elif function_type in ('TERNARY', 'TERNARY_MERGE'):
             prefer_first_socket = prefer_first_socket_ternary
 
-        data = NodeData(
-            node_to_add=node_to_add, 
-            subtype_name=subtype_name, 
-            operation_type=operation_type, 
-            mix_type=mix_type,
-            prefer_first_socket = prefer_first_socket,
-            preferred_input_type=preferred_input_type, 
-            socket_data_type=socket_data_type
-            )
+        if function_type != 'BATCH':
+            data = NodeData(
+                node_to_add=node_to_add, 
+                subtype_name=subtype_name, 
+                operation_type=operation_type, 
+                mix_type=mix_type,
+                prefer_first_socket=prefer_first_socket,
+                preferred_input_type=preferred_input_type, 
+                socket_data_type=socket_data_type
+                )
+        else:
+            data = NodeData_Batch(
+                node_to_add=node_to_add, 
+                subtype_name=subtype_name, 
+                operation_type=operation_type,
+                first_socket_index=first_socket_index,
+                batch_socket_index=batch_socket_index,
+                preferred_input_type=preferred_input_type,
+                isolate_first_socket=isolate_first_socket,
+                socket_data_type=socket_data_type
+                )
 
         new_nodes = []
         if function_type == 'UNARY':
             new_nodes = self.group_merge(context, selected_nodes, data, group_size=1)
 
         elif function_type == 'BATCH':
-            new_node = nodes.new(node_to_add)
-            new_node.hide = True
-            new_node.select = True
+            new_nodes = self.batch_merge(context, selected_nodes, data)
 
-            new_nodes.append(new_node)
-            if subtype_name is not None:
-                setattr(new_node, subtype_name, operation_type)
-
-            batch_socket = self.get_valid_socket(new_node, mode='Inputs', 
-                data_types=socket_data_type, target_index=batch_socket_index)
-            
-            if not isolate_first_socket:
-                for node in reversed(selected_nodes):
-                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                    links.new(from_socket, batch_socket)
-            else:
-                first_node = selected_nodes.pop(0)
-
-                for node in reversed(selected_nodes):
-                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                    links.new(from_socket, batch_socket)
-
-                first_to_socket = self.get_valid_socket(new_node, mode='Inputs', 
-                    data_types=socket_data_type, target_index=first_socket_index)
-                first_from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=preferred_input_type)
-
-                links.new(first_from_socket, first_to_socket)
-
-            context.space_data.node_tree.nodes.active = new_node
-        
         elif function_type == 'TERNARY_MERGE':
             new_nodes = self.group_merge(context, selected_nodes, data, group_size=3)
 
