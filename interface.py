@@ -359,7 +359,7 @@ class NWBatchChangeBlendTypeMenu(Menu, NWBase):
             col.separator(factor=1.0)
             for operation, name, description in items:
                 props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name, icon='NONE')
-                props.blend_type = operation 
+                props.blend_type = operation
 
 class NWBatchChangeOperationMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_batch_change_operation_menu"

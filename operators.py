@@ -2151,9 +2151,6 @@ class NWBatchChangeNodes(Operator, NWBase):
         bool_type = self.bool_type
 
         for node in context.selected_nodes:
-            if blend_type == 'CURRENT':
-                pass
-                
             if node.type == 'MIX_RGB' or (node.bl_idname == 'ShaderNodeMix' and node.data_type == 'RGBA'):
                 self.set_node_property(node, "blend_type", value=blend_type, prop_list=blend_types)
 
