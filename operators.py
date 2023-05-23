@@ -2148,7 +2148,7 @@ class NWBatchChangeNodes(Operator, NWBase):
     )
 
     @staticmethod
-    def set_node_property(node, property_name, value, prop_list):
+    def set_node_property(node, property_name, value, prop_list, should_wrap):
         if value == 'CURRENT':
             return
 
@@ -2158,25 +2158,28 @@ class NWBatchChangeNodes(Operator, NWBase):
             current_value = getattr(node, property_name)
             
             if value == 'NEXT':
-                prop_value = next_in_list(prop_list, key=current_value, wrap=True)
+                prop_value = next_in_list(prop_list, key=current_value, wrap=should_wrap)
             if value == 'PREV':
-                prop_value = prev_in_list(prop_list, key=current_value, wrap=True)
+                prop_value = prev_in_list(prop_list, key=current_value, wrap=should_wrap)
 
         setattr(node, property_name, prop_value)
 
     def execute(self, context):
+        if not context.selected_nodes:
+            return {'CANCELLED'}
+
         for node in context.selected_nodes:
             if node.type == 'MIX_RGB' or (node.bl_idname == 'ShaderNodeMix' and node.data_type == 'RGBA'):
-                self.set_node_property(node, "blend_type", value=self.blend_type, prop_list=blend_types_list)
+                self.set_node_property(node, "blend_type", value=self.blend_type, prop_list=blend_types_list, should_wrap=True)
 
             if node.type == 'MATH' or node.bl_idname == 'ShaderNodeMath':
-                self.set_node_property(node, "operation", value=self.operation, prop_list=math_operations_list)
+                self.set_node_property(node, "operation", value=self.operation, prop_list=math_operations_list, should_wrap=True)
 
             if node.type == 'VECTOR_MATH' or node.bl_idname == 'ShaderNodeVectorMath':
-                self.set_node_property(node, "operation", value=self.vector_operation, prop_list=vector_operations_list)
+                self.set_node_property(node, "operation", value=self.vector_operation, prop_list=vector_operations_list, should_wrap=True)
 
             if node.type == 'BOOLEAN_MATH' or node.bl_idname == 'FunctionNodeBooleanMath':
-                self.set_node_property(node, "operation", value=self.bool_type, prop_list=boolean_operations_list)
+                self.set_node_property(node, "operation", value=self.bool_type, prop_list=boolean_operations_list, should_wrap=True)
 
         #Somehow the operator stores the state from the last time it's called so a hard reset here was applied
         self.blend_type = 'CURRENT'
