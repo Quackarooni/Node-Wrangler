@@ -339,6 +339,9 @@ class NWBatchChangeNodesMenu(Menu, NWBase):
         layout.menu(NWBatchChangeBlendTypeMenu.bl_idname)
         layout.menu(NWBatchChangeOperationMenu.bl_idname)
 
+        if context.space_data.tree_type == 'GeometryNodeTree':
+            layout.menu(NWBatchChangeBoolMenu.bl_idname)
+
 
 class NWBatchChangeBlendTypeMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_batch_change_blend_type_menu"
@@ -353,7 +356,6 @@ class NWBatchChangeBlendTypeMenu(Menu, NWBase):
             for operation, name, description in items:
                 props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name, icon='NONE')
                 props.blend_type = operation 
-                props.operation = 'CURRENT'
 
 class NWBatchChangeOperationMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_batch_change_operation_menu"
@@ -373,9 +375,23 @@ class NWBatchChangeOperationMenu(Menu, NWBase):
                 else:
                     props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name, icon='NONE')
                     props.operation = operation
-                    props.blend_type = 'CURRENT'
 
         return
+
+class NWBatchChangeBoolMenu(Menu, NWBase):
+    bl_idname = "NODE_MT_fw_batch_change_bool_menu"
+    bl_label = "Batch Change Boolean Math Nodes"
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row()
+        col = row.column()   
+
+        for key, items in boolean_operations_menu_dict.items():
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name)
+                props.bool_type = operation
 
 
 class NWCopyToSelectedMenu(Menu, NWBase):
@@ -619,6 +635,7 @@ classes = (
     NWBatchChangeNodesMenu,
     NWBatchChangeBlendTypeMenu,
     NWBatchChangeOperationMenu,
+    NWBatchChangeBoolMenu,
     NWCopyToSelectedMenu,
     NWCopyLabelMenu,
     NWAddReroutesMenu,

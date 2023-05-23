@@ -2101,16 +2101,27 @@ class NWBatchChangeNodes(Operator, NWBase):
 
     blend_type: EnumProperty(
         name="Blend Type",
+        default = 'CURRENT',
         items=blend_types + navs,
     )
     operation: EnumProperty(
         name="Operation",
+        default = 'CURRENT',
         items=operations + navs,
     )
+
+    bool_type: EnumProperty(
+        name="Boolean Type",
+        default = 'CURRENT',
+        items=boolean_operations + navs,
+    )
+
 
     def execute(self, context):
         blend_type = self.blend_type
         operation = self.operation
+        bool_type = self.bool_type
+
         for node in context.selected_nodes:
             if node.type == 'MIX_RGB' or (node.bl_idname == 'ShaderNodeMix' and node.data_type == 'RGBA'):
                 if blend_type not in [nav[0] for nav in navs]:
@@ -2151,6 +2162,25 @@ class NWBatchChangeNodes(Operator, NWBase):
                         else:
                             node.operation = operations[index - 1][0]
 
+            if node.type == 'BOOLEAN_MATH' or node.bl_idname == 'FunctionNodeBooleanMath':
+                if bool_type not in [nav[0] for nav in navs]:
+                    node.operation = bool_type
+                else:
+                    if bool_type == 'NEXT':
+                        index = [i for i, entry in enumerate(boolean_operations) if node.operation in entry][0]
+                        # index = operations.index(node.operation)
+                        if index == len(boolean_operations) - 1:
+                            node.operation = boolean_operations[0][0]
+                        else:
+                            node.operation = boolean_operations[index + 1][0]
+
+                    if bool_type == 'PREV':
+                        index = [i for i, entry in enumerate(boolean_operations) if node.operation in entry][0]
+                        # index = operations.index(node.operation)
+                        if index == 0:
+                            node.operation = boolean_operations[len(boolean_operations) - 1][0]
+                        else:
+                            node.operation = boolean_operations[index - 1][0]
         return {'FINISHED'}
 
 
