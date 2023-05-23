@@ -104,10 +104,11 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
     merge_position: EnumProperty(
         name="Mix Node Position",
         items=(
-            ("CENTER", "Center", "Place the Mix node between the two nodes"),
-            ("BOTTOM", "Bottom", "Place the Mix node at the same height as the lowest node")
+            ("TOP", "Top", "Place the Mix nodes such that the tops align with the original nodes"),
+            ("MIDDLE", "Middle", "Place the Mix nodes such that the middle parts align with the original nodes"),
+            ("BOTTOM", "Bottom", "Place the Mix nodes such that the bottom align with the original nodes")
         ),
-        default='CENTER',
+        default='MIDDLE',
         description="When merging nodes with the Ctrl+Numpad0 hotkey (and similar) specify the position of the new nodes")
 
     prefer_first_socket_binary: BoolProperty(

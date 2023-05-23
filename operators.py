@@ -1704,10 +1704,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
         margin = 15
         x_spacing_offset = 120
 
-        target_x, target_y = align_point
-
         #TODO - Implement Sizes between different nodes, in both cases of vertical and horizontal alignment
-
         if self.operation == 'STRING_TO_CURVES':
             offset_size = 50
         else:
@@ -1717,13 +1714,20 @@ class NWMergeNodesRefactored(Operator, NWBase):
             node.location.y = current_pos
             current_pos -= offset_size + margin
 
+        merge_position = fetch_user_preferences("merge_position")
         min_x, max_x, min_y, max_y = get_bounds(nodes)
-        mid_x, mid_y = (0.5 * (min_x + max_x), 0.5 * (min_y + max_y))
+        target_x, target_y = align_point
 
-        align_offset_x, align_offset_y = target_x - mid_x, target_y - mid_y 
+        align_offset_x = target_x - max_x + x_spacing_offset
+        if merge_position == 'TOP':
+            align_offset_y = target_y - max_y - (0.5 * offset_size)
+        elif merge_position == 'MIDDLE':
+            align_offset_y = target_y - 0.5 * (min_y + max_y)
+        elif merge_position == 'BOTTOM':
+            align_offset_y = target_y - min_y + (0.5 * offset_size)
 
         for node in nodes:
-            node.location.x = align_offset_x + x_spacing_offset
+            node.location.x = align_offset_x
             node.location.y += align_offset_y
 
     def group_merge(self, context, selected_nodes, data, group_size):
@@ -1855,7 +1859,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
     def execute(self, context):
         prefs = fetch_user_preferences()
         merge_hide = prefs.merge_hide
-        merge_position = prefs.merge_position  # 'center' or 'bottom'
+        merge_position = prefs.merge_position
 
         tree_type = context.space_data.node_tree.type
         nodes, links = get_nodes_links(context)
@@ -1873,7 +1877,13 @@ class NWMergeNodesRefactored(Operator, NWBase):
             node.select = False
 
         min_x, max_x, min_y, max_y = get_bounds(selected_nodes)
-        align_point = (max_x, 0.5 * (min_y + max_y))
+
+        if merge_position == 'TOP':
+            align_point = (max_x, max_y)
+        elif merge_position == 'MIDDLE':
+            align_point = (max_x, 0.5 * (min_y + max_y))
+        elif merge_position == 'BOTTOM':
+            align_point = (max_x, min_y)
         selected_nodes.sort(key=lambda n: n.location.y - (n.dimensions.y / 2), reverse=True)
 
         mix_type = None
