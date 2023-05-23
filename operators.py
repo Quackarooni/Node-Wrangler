@@ -2122,6 +2122,27 @@ class NWBatchChangeNodes(Operator, NWBase):
         items=boolean_operations + navs,
     )
 
+    @staticmethod
+    def set_node_property(node, property_name, value, prop_list):
+        if value == 'CURRENT':
+            return
+
+        elif value not in [nav[0] for nav in navs]:
+            setattr(node, property_name, value)
+        else:
+            index = [i for i, entry in enumerate(prop_list) if getattr(node, property_name) in entry][0]
+            
+            if value == 'NEXT':
+                if index == len(prop_list) - 1:
+                    setattr(node, property_name, prop_list[0][0])
+                else:
+                    setattr(node, property_name, prop_list[index + 1][0])
+
+            if value == 'PREV':
+                if index == 0:
+                    setattr(node, property_name, prop_list[len(prop_list) - 1][0])
+                else:
+                    setattr(node, property_name, prop_list[index - 1][0])
 
     def execute(self, context):
         blend_type = self.blend_type
@@ -2134,93 +2155,22 @@ class NWBatchChangeNodes(Operator, NWBase):
                 pass
                 
             if node.type == 'MIX_RGB' or (node.bl_idname == 'ShaderNodeMix' and node.data_type == 'RGBA'):
-                if blend_type not in [nav[0] for nav in navs]:
-                    node.blend_type = blend_type
-                else:
-                    if blend_type == 'NEXT':
-                        index = [i for i, entry in enumerate(blend_types) if node.blend_type in entry][0]
-                        # index = blend_types.index(node.blend_type)
-                        if index == len(blend_types) - 1:
-                            node.blend_type = blend_types[0][0]
-                        else:
-                            node.blend_type = blend_types[index + 1][0]
-
-                    if blend_type == 'PREV':
-                        index = [i for i, entry in enumerate(blend_types) if node.blend_type in entry][0]
-                        if index == 0:
-                            node.blend_type = blend_types[len(blend_types) - 1][0]
-                        else:
-                            node.blend_type = blend_types[index - 1][0]
+                self.set_node_property(node, "blend_type", value=blend_type, prop_list=blend_types)
 
             if node.type == 'MATH' or node.bl_idname == 'ShaderNodeMath':
-                if operation == 'CURRENT':
-                    pass
-                
-                elif operation not in [nav[0] for nav in navs]:
-                    node.operation = operation
-                else:
-                    if operation == 'NEXT':
-                        index = [i for i, entry in enumerate(operations) if node.operation in entry][0]
-                        # index = operations.index(node.operation)
-                        if index == len(operations) - 1:
-                            node.operation = operations[0][0]
-                        else:
-                            node.operation = operations[index + 1][0]
-
-                    if operation == 'PREV':
-                        index = [i for i, entry in enumerate(operations) if node.operation in entry][0]
-                        # index = operations.index(node.operation)
-                        if index == 0:
-                            node.operation = operations[len(operations) - 1][0]
-                        else:
-                            node.operation = operations[index - 1][0]
-
+                self.set_node_property(node, "operation", value=operation, prop_list=operations)
 
             if node.type == 'VECTOR_MATH' or node.bl_idname == 'ShaderNodeVectorMath':
-                if vector_operation == 'CURRENT':
-                    pass
-                
-                elif vector_operation not in [nav[0] for nav in navs]:
-                    node.operation = vector_operation
-                else:
-                    if vector_operation == 'NEXT':
-                        index = [i for i, entry in enumerate(vector_operations) if node.operation in entry][0]
-                        # index = vector_operations.index(node.operation)
-                        if index == len(vector_operations) - 1:
-                            node.operation = vector_operations[0][0]
-                        else:
-                            node.operation = vector_operations[index + 1][0]
-
-                    if vector_operation == 'PREV':
-                        index = [i for i, entry in enumerate(vector_operations) if node.operation in entry][0]
-                        # index = vector_operations.index(node.operation)
-                        if index == 0:
-                            node.operation = vector_operations[len(vector_operations) - 1][0]
-                        else:
-                            node.operation = vector_operations[index - 1][0]
+                self.set_node_property(node, "operation", value=vector_operation, prop_list=vector_operations)
 
             if node.type == 'BOOLEAN_MATH' or node.bl_idname == 'FunctionNodeBooleanMath':
-                if bool_type == 'CURRENT':
-                    pass
-                
-                elif bool_type not in [nav[0] for nav in navs]:
-                    node.operation = bool_type
-                else:
-                    if bool_type == 'NEXT':
-                        index = [i for i, entry in enumerate(boolean_operations) if node.operation in entry][0]
-                        # index = operations.index(node.operation)
-                        if index == len(boolean_operations) - 1:
-                            node.operation = boolean_operations[0][0]
-                        else:
-                            node.operation = boolean_operations[index + 1][0]
+                self.set_node_property(node, "operation", value=bool_type, prop_list=boolean_operations)
 
-                    if bool_type == 'PREV':
-                        index = [i for i, entry in enumerate(boolean_operations) if node.operation in entry][0]
-                        # index = operations.index(node.operation)
-                        if index == 0:
-                            node.operation = boolean_operations[len(boolean_operations) - 1][0]
-                        else:
-                            node.operation = boolean_operations[index - 1][0]
+        #Somehow the operator stores the state from the last time it's called so a hard reset here was applied
+        self.blend_type = 'CURRENT'
+        self.operation = 'CURRENT'
+        self.vector_operation = 'CURRENT'
+        self.bool_type = 'CURRENT'
         return {'FINISHED'}
 
 
