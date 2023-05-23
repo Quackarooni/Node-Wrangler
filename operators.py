@@ -40,9 +40,30 @@ from .utils.constants import (
     )
 from .utils.draw import draw_callback_nodeoutline
 from .utils.paths import match_files_to_socket_names, split_into_components
-from .utils.nodes import (node_mid_pt, get_bounds, fetch_user_preferences, autolink, node_at_pos, get_active_tree, get_nodes_links, is_viewer_socket,
-                          is_viewer_link, get_group_output_node, get_output_location, force_update, get_internal_socket,
-                          fw_check, NWBase, FinishedAutolink, get_first_enabled_output, is_visible_socket, temporary_unframe, viewer_socket_name)
+from .utils.nodes import (
+    next_in_list,
+    prev_in_list,
+    node_mid_pt, 
+    get_bounds, 
+    fetch_user_preferences, 
+    autolink, 
+    node_at_pos, 
+    get_active_tree, 
+    get_nodes_links, 
+    is_viewer_socket,
+    is_viewer_link, 
+    get_group_output_node, 
+    get_output_location, 
+    force_update, 
+    get_internal_socket,
+    fw_check, 
+    NWBase, 
+    FinishedAutolink, 
+    get_first_enabled_output, 
+    is_visible_socket, 
+    temporary_unframe, 
+    viewer_socket_name
+    )
 
 class NodeSetting(bpy.types.PropertyGroup):
     value: StringProperty(
@@ -2134,19 +2155,12 @@ class NWBatchChangeNodes(Operator, NWBase):
         elif value not in [nav[0] for nav in navs]:
             prop_value = value
         else:
-            index = prop_list.index(getattr(node, property_name))
+            current_value = getattr(node, property_name)
             
             if value == 'NEXT':
-                if index == len(prop_list) - 1:
-                    prop_value = prop_list[0]
-                else:
-                    prop_value = prop_list[index + 1]
-
+                prop_value = next_in_list(prop_list, key=current_value, wrap=True)
             if value == 'PREV':
-                if index == 0:
-                    prop_value = prop_list[len(prop_list) - 1]
-                else:
-                    prop_value = prop_list[index - 1]
+                prop_value = prev_in_list(prop_list, key=current_value, wrap=True)
 
         setattr(node, property_name, prop_value)
 

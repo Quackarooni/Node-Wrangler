@@ -3,6 +3,30 @@
 import bpy
 from math import hypot
 
+def next_in_list(items, key, *, wrap=False):
+    index = items.index(key)
+    max_index = len(items) - 1
+
+    if index == max_index:
+        if wrap is True:
+            return items[0]
+        else:
+            return items[max_index]
+    else:
+        return items[index + 1]
+
+def prev_in_list(items, key, *, wrap=False):
+    index = items.index(key)
+    max_index = len(items) - 1
+
+    if index == 0:
+        if wrap is True:
+            return items[max_index]
+        else:
+            return items[0]
+    else:
+        return items[index - 1]
+
 
 def fetch_user_preferences(attr_id=None):
     prefs = bpy.context.preferences.addons["Node Wrangler"].preferences
