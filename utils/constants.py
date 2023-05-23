@@ -127,7 +127,7 @@ operations = [
     ('MODULO', 'Modulo', 'Modulo Mode'),
     ('WRAP', 'Wrap', 'Wrap Mode'),
     ('SNAP', 'Snap', 'Snap Mode'),
-    ('PINGPONG', 'Pingpong', 'Pingpong Mode'),
+    ('PINGPONG', 'Ping-Pong', 'Ping-Pong Mode'),
     ('SINE', 'Sine', 'Sine Mode'),
     ('COSINE', 'Cosine', 'Cosine Mode'),
     ('TANGENT', 'Tangent', 'Tangent Mode'),
@@ -177,7 +177,7 @@ operations_menu_dict = {
         ('MODULO', 'Modulo', 'Modulo Mode'),
         ('WRAP', 'Wrap', 'Wrap Mode'),
         ('SNAP', 'Snap', 'Snap Mode'),
-        ('PINGPONG', 'Pingpong', 'Pingpong Mode'),),
+        ('PINGPONG', 'Ping-Pong', 'Ping-Pong Mode'),),
 
     "Trigonometric" :(
         ('SINE', 'Sine', 'Sine Mode'),
