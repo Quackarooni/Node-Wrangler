@@ -1895,35 +1895,6 @@ class NWMergeNodesRefactored(Operator, NWBase):
             #'GEOMETRY', #Exclude geometry sockets as inputs by default
             'COLLECTION', 'TEXTURE', 'MATERIAL'
             ]
-        
-        from typing import NamedTuple
-
-        class NodeData_Merge(NamedTuple):
-            node_to_add : str
-            subtype_name : str
-            mix_type : str
-            operation_type : str
-            socket_data_type : tuple
-            preferred_input_type : tuple
-
-        class NodeData_Chain(NamedTuple):
-            node_to_add : str
-            subtype_name : str
-            mix_type : str
-            operation_type : str
-            socket_data_type : tuple
-            preferred_input_type : tuple
-            prefer_first_socket : bool
-
-        class NodeData_Batch(NamedTuple):
-            node_to_add : str
-            subtype_name : str
-            operation_type : str
-            preferred_input_type : tuple 
-            isolate_first_socket : bool
-            socket_data_type : tuple
-            first_socket_index : int
-            batch_socket_index : int
 
         if merge_type == 'VECTOR':
             node_to_add = 'ShaderNodeVectorMath'
@@ -2028,8 +1999,19 @@ class NWMergeNodesRefactored(Operator, NWBase):
         elif function_type in ('TERNARY', 'TERNARY_MERGE'):
             prefer_first_socket = prefer_first_socket_ternary
 
+        from typing import NamedTuple
 
-        if function_type == 'BATCH':            
+        if function_type == 'BATCH':
+            class NodeData_Batch(NamedTuple):
+                node_to_add : str
+                subtype_name : str
+                operation_type : str
+                preferred_input_type : tuple 
+                isolate_first_socket : bool
+                socket_data_type : tuple
+                first_socket_index : int
+                batch_socket_index : int
+
             data = NodeData_Batch(
                 node_to_add=node_to_add, 
                 subtype_name=subtype_name, 
@@ -2042,6 +2024,14 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 )
 
         elif function_type in ('UNARY', 'BINARY_MERGE', 'TERNARY_MERGE'):
+            class NodeData_Merge(NamedTuple):
+                node_to_add : str
+                subtype_name : str
+                mix_type : str
+                operation_type : str
+                socket_data_type : tuple
+                preferred_input_type : tuple
+
             data = NodeData_Merge(
                 node_to_add=node_to_add, 
                 subtype_name=subtype_name, 
@@ -2052,6 +2042,15 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 )
 
         elif function_type in ('BINARY', 'TERNARY'):
+            class NodeData_Chain(NamedTuple):
+                node_to_add : str
+                subtype_name : str
+                mix_type : str
+                operation_type : str
+                socket_data_type : tuple
+                preferred_input_type : tuple
+                prefer_first_socket : bool
+
             data = NodeData_Chain(
                 node_to_add=node_to_add, 
                 subtype_name=subtype_name, 
