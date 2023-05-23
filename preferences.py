@@ -8,6 +8,7 @@ from . import operators
 from . import interface
 
 from .utils.constants import nice_hotkey_name
+from rna_keymap_ui import _indented_layout as indented_layout
 
 
 # Principled prefs
@@ -129,7 +130,7 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
         description="Expand this box into a list of all the hotkeys for functions in this addon"
     )
     hotkey_list_filter: StringProperty(
-        name="        Filter by Name",
+        name="Filter by Name",
         default="",
         description="Show only hotkeys that have this text in their name",
         options={'TEXTEDIT_UPDATE'}
@@ -192,7 +193,9 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
             hotkey_button_name = "Hide Hotkey List"
         col.prop(self, "show_hotkey_list", text=hotkey_button_name, toggle=True)
         if self.show_hotkey_list:
+            col.separator()
             col.prop(self, "hotkey_list_filter", icon="VIEWZOOM")
+            col = indented_layout(col, level=1)
             col.separator()
             for hotkey in kmi_defs:
                 if hotkey[7]:
