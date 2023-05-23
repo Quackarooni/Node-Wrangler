@@ -1856,35 +1856,9 @@ class NWMergeNodesRefactored(Operator, NWBase):
         context.space_data.node_tree.nodes.active = new_node
         return [new_node, ]
 
-    def execute(self, context):
-        prefs = fetch_user_preferences()
-        merge_hide = prefs.merge_hide
-        merge_position = prefs.merge_position
-
+    def setup_function_data(self, context, function_type, operation_type):
         tree_type = context.space_data.node_tree.type
-        nodes, links = get_nodes_links(context)
-
-        #TODO - Fetch operation type and subtype function
-        operation_type = self.operation
-        function_type = self.get_function_type(operation_type)
         merge_type = self.merge_type
-
-        selected_nodes = list(context.selected_nodes)
-        if not selected_nodes:
-            return {'CANCELLED'}
-
-        for node in nodes:
-            node.select = False
-
-        min_x, max_x, min_y, max_y = get_bounds(selected_nodes)
-
-        if merge_position == 'TOP':
-            align_point = (max_x, max_y)
-        elif merge_position == 'MIDDLE':
-            align_point = (max_x, 0.5 * (min_y + max_y))
-        elif merge_position == 'BOTTOM':
-            align_point = (max_x, min_y)
-        selected_nodes.sort(key=lambda n: n.location.y - (n.dimensions.y / 2), reverse=True)
 
         mix_type = None
         isolate_first_socket = False
@@ -1990,6 +1964,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
             socket_data_type = ('RGBA', )
 
 
+        prefs = fetch_user_preferences()
         prefer_first_socket_binary = prefs.prefer_first_socket_binary
         prefer_first_socket_ternary = prefs.prefer_first_socket_ternary
 
@@ -2061,8 +2036,38 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 socket_data_type=socket_data_type
                 )            
 
+        return data
 
-        new_nodes = []
+    def execute(self, context):
+        prefs = fetch_user_preferences()
+        merge_hide = prefs.merge_hide
+        merge_position = prefs.merge_position
+
+        nodes, links = get_nodes_links(context)
+
+        #TODO - Fetch operation type and subtype function
+        operation_type = self.operation
+        function_type = self.get_function_type(operation_type)
+
+        selected_nodes = list(context.selected_nodes)
+        if not selected_nodes:
+            return {'CANCELLED'}
+
+        for node in nodes:
+            node.select = False
+
+        min_x, max_x, min_y, max_y = get_bounds(selected_nodes)
+
+        if merge_position == 'TOP':
+            align_point = (max_x, max_y)
+        elif merge_position == 'MIDDLE':
+            align_point = (max_x, 0.5 * (min_y + max_y))
+        elif merge_position == 'BOTTOM':
+            align_point = (max_x, min_y)
+        selected_nodes.sort(key=lambda n: n.location.y - (n.dimensions.y / 2), reverse=True)
+
+        data = self.setup_function_data(context, function_type, operation_type)
+
         if function_type == 'UNARY':
             new_nodes = self.group_merge(context, selected_nodes, data, group_size=1)
 
