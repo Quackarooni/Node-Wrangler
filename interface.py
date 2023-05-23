@@ -346,11 +346,14 @@ class NWBatchChangeBlendTypeMenu(Menu, NWBase):
 
     def draw(self, context):
         layout = self.layout
-        for type, name, description in blend_types:
-            props = layout.operator(operators.NWBatchChangeNodes.bl_idname, text=name)
-            props.blend_type = type
-            props.operation = 'CURRENT'
-
+        row = layout.row()
+        col = row.column()
+        for key, items in blend_types_menu_dict.items():
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name, icon='NONE')
+                props.blend_type = operation 
+                props.operation = 'CURRENT'
 
 class NWBatchChangeOperationMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_batch_change_operation_menu"
@@ -358,10 +361,21 @@ class NWBatchChangeOperationMenu(Menu, NWBase):
 
     def draw(self, context):
         layout = self.layout
-        for type, name, description in operations:
-            props = layout.operator(operators.NWBatchChangeNodes.bl_idname, text=name)
-            props.blend_type = 'CURRENT'
-            props.operation = type
+        row = layout.row()
+        
+        for key, items in operations_menu_dict.items():
+            col = row.column()
+            col.label(text=key, icon='NONE')
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                if operation == "LayoutSeparator":
+                    col.separator(factor=1.0)
+                else:
+                    props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name, icon='NONE')
+                    props.operation = operation
+                    props.blend_type = 'CURRENT'
+
+        return
 
 
 class NWCopyToSelectedMenu(Menu, NWBase):
