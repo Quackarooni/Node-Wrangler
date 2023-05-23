@@ -338,6 +338,8 @@ class NWBatchChangeNodesMenu(Menu, NWBase):
         layout = self.layout
         layout.menu(NWBatchChangeBlendTypeMenu.bl_idname)
         layout.menu(NWBatchChangeOperationMenu.bl_idname)
+        if context.space_data.tree_type in ('GeometryNodeTree', 'ShaderNodeTree'):
+            layout.menu(NWBatchChangeVectorOperationMenu.bl_idname)
 
         if context.space_data.tree_type == 'GeometryNodeTree':
             layout.menu(NWBatchChangeBoolMenu.bl_idname)
@@ -376,8 +378,6 @@ class NWBatchChangeOperationMenu(Menu, NWBase):
                     props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name, icon='NONE')
                     props.operation = operation
 
-        return
-
 class NWBatchChangeBoolMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_batch_change_bool_menu"
     bl_label = "Batch Change Boolean Math Nodes"
@@ -392,6 +392,25 @@ class NWBatchChangeBoolMenu(Menu, NWBase):
             for operation, name, description in items:
                 props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name)
                 props.bool_type = operation
+
+class NWBatchChangeVectorOperationMenu(Menu, NWBase):
+    bl_idname = "NODE_MT_fw_batch_change_vector_operation_menu"
+    bl_label = "Batch Change Vector Math Operation"
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row()
+        
+        for key, items in vector_operations_menu_dict.items():
+            col = row.column()
+            col.label(text=key, icon='NONE')
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                if operation == "LayoutSeparator":
+                    col.separator(factor=1.0)
+                else:
+                    props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name)
+                    props.vector_operation = operation
 
 
 class NWCopyToSelectedMenu(Menu, NWBase):
@@ -635,6 +654,7 @@ classes = (
     NWBatchChangeNodesMenu,
     NWBatchChangeBlendTypeMenu,
     NWBatchChangeOperationMenu,
+    NWBatchChangeVectorOperationMenu,
     NWBatchChangeBoolMenu,
     NWCopyToSelectedMenu,
     NWCopyLabelMenu,

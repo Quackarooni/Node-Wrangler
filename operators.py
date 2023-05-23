@@ -2110,6 +2110,13 @@ class NWBatchChangeNodes(Operator, NWBase):
         items=operations + navs,
     )
 
+    vector_operation: EnumProperty(
+        name="Vector Operation",
+        default = 'CURRENT',
+        items=vector_operations + navs,
+    )
+
+
     bool_type: EnumProperty(
         name="Boolean Type",
         default = 'CURRENT',
@@ -2120,9 +2127,13 @@ class NWBatchChangeNodes(Operator, NWBase):
     def execute(self, context):
         blend_type = self.blend_type
         operation = self.operation
+        vector_operation = self.vector_operation
         bool_type = self.bool_type
 
         for node in context.selected_nodes:
+            if blend_type == 'CURRENT':
+                pass
+                
             if node.type == 'MIX_RGB' or (node.bl_idname == 'ShaderNodeMix' and node.data_type == 'RGBA'):
                 if blend_type not in [nav[0] for nav in navs]:
                     node.blend_type = blend_type
@@ -2143,7 +2154,10 @@ class NWBatchChangeNodes(Operator, NWBase):
                             node.blend_type = blend_types[index - 1][0]
 
             if node.type == 'MATH' or node.bl_idname == 'ShaderNodeMath':
-                if operation not in [nav[0] for nav in navs]:
+                if operation == 'CURRENT':
+                    pass
+                
+                elif operation not in [nav[0] for nav in navs]:
                     node.operation = operation
                 else:
                     if operation == 'NEXT':
@@ -2162,8 +2176,35 @@ class NWBatchChangeNodes(Operator, NWBase):
                         else:
                             node.operation = operations[index - 1][0]
 
+
+            if node.type == 'VECTOR_MATH' or node.bl_idname == 'ShaderNodeVectorMath':
+                if vector_operation == 'CURRENT':
+                    pass
+                
+                elif vector_operation not in [nav[0] for nav in navs]:
+                    node.operation = vector_operation
+                else:
+                    if vector_operation == 'NEXT':
+                        index = [i for i, entry in enumerate(vector_operations) if node.operation in entry][0]
+                        # index = vector_operations.index(node.operation)
+                        if index == len(vector_operations) - 1:
+                            node.operation = vector_operations[0][0]
+                        else:
+                            node.operation = vector_operations[index + 1][0]
+
+                    if vector_operation == 'PREV':
+                        index = [i for i, entry in enumerate(vector_operations) if node.operation in entry][0]
+                        # index = vector_operations.index(node.operation)
+                        if index == 0:
+                            node.operation = vector_operations[len(vector_operations) - 1][0]
+                        else:
+                            node.operation = vector_operations[index - 1][0]
+
             if node.type == 'BOOLEAN_MATH' or node.bl_idname == 'FunctionNodeBooleanMath':
-                if bool_type not in [nav[0] for nav in navs]:
+                if bool_type == 'CURRENT':
+                    pass
+                
+                elif bool_type not in [nav[0] for nav in navs]:
                     node.operation = bool_type
                 else:
                     if bool_type == 'NEXT':
