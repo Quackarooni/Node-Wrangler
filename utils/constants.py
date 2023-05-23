@@ -329,6 +329,11 @@ navs = [
     ('PREV', 'Prev', 'Previous blend type/operation'),
 ]
 
+blend_types_list = [item[0] for item in blend_types]
+boolean_operations_list = [item[0] for item in boolean_operations]
+vector_operations_list  = [item[0] for item in vector_operations]
+math_operations_list = [item[0] for item in operations]
+
 draw_color_sets = {
     "red_white": (
         (1.0, 1.0, 1.0, 0.7),

@@ -29,7 +29,11 @@ from .utils.constants import (
     boolean_operations,
     shader_operations,
     string_operations,
-    operations, 
+    operations,
+    blend_types_list,
+    vector_operations_list,
+    boolean_operations_list,
+    math_operations_list, 
     navs, 
     get_nodes_from_category, 
     rl_outputs
@@ -2128,21 +2132,23 @@ class NWBatchChangeNodes(Operator, NWBase):
             return
 
         elif value not in [nav[0] for nav in navs]:
-            setattr(node, property_name, value)
+            prop_value = value
         else:
-            index = [i for i, entry in enumerate(prop_list) if getattr(node, property_name) in entry][0]
+            index = prop_list.index(getattr(node, property_name))
             
             if value == 'NEXT':
                 if index == len(prop_list) - 1:
-                    setattr(node, property_name, prop_list[0][0])
+                    prop_value = prop_list[0]
                 else:
-                    setattr(node, property_name, prop_list[index + 1][0])
+                    prop_value = prop_list[index + 1]
 
             if value == 'PREV':
                 if index == 0:
-                    setattr(node, property_name, prop_list[len(prop_list) - 1][0])
+                    prop_value = prop_list[len(prop_list) - 1]
                 else:
-                    setattr(node, property_name, prop_list[index - 1][0])
+                    prop_value = prop_list[index - 1]
+
+        setattr(node, property_name, prop_value)
 
     def execute(self, context):
         blend_type = self.blend_type
@@ -2150,18 +2156,19 @@ class NWBatchChangeNodes(Operator, NWBase):
         vector_operation = self.vector_operation
         bool_type = self.bool_type
 
+
         for node in context.selected_nodes:
             if node.type == 'MIX_RGB' or (node.bl_idname == 'ShaderNodeMix' and node.data_type == 'RGBA'):
-                self.set_node_property(node, "blend_type", value=blend_type, prop_list=blend_types)
+                self.set_node_property(node, "blend_type", value=blend_type, prop_list=blend_types_list)
 
             if node.type == 'MATH' or node.bl_idname == 'ShaderNodeMath':
-                self.set_node_property(node, "operation", value=operation, prop_list=operations)
+                self.set_node_property(node, "operation", value=operation, prop_list=math_operations_list)
 
             if node.type == 'VECTOR_MATH' or node.bl_idname == 'ShaderNodeVectorMath':
-                self.set_node_property(node, "operation", value=vector_operation, prop_list=vector_operations)
+                self.set_node_property(node, "operation", value=vector_operation, prop_list=vector_operations_list)
 
             if node.type == 'BOOLEAN_MATH' or node.bl_idname == 'FunctionNodeBooleanMath':
-                self.set_node_property(node, "operation", value=bool_type, prop_list=boolean_operations)
+                self.set_node_property(node, "operation", value=bool_type, prop_list=boolean_operations_list)
 
         #Somehow the operator stores the state from the last time it's called so a hard reset here was applied
         self.blend_type = 'CURRENT'
