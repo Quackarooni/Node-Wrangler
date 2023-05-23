@@ -41,6 +41,7 @@ from .utils.constants import (
 from .utils.draw import draw_callback_nodeoutline
 from .utils.paths import match_files_to_socket_names, split_into_components
 from .utils.nodes import (
+    n_wise_iter,
     next_in_list,
     prev_in_list,
     node_mid_pt, 
@@ -1577,15 +1578,6 @@ class NWMergeNodes(Operator, NWBase):
                 nodes[i].select = False
 
         return {'FINISHED'}
-
-def by_pair(iterable):
-    "s -> (s0, s1), (s2, s3), (s4, s5), ..."
-    a = iter(iterable)
-    return zip_longest(a, a)
-
-def n_wise_iter(iterable, n):
-    "s -> (s0,s1,s2,...sn-1), (sn,sn+1,sn+2,...s2n-1), (s2n,s2n+1,s2n+2,...s3n-1), ..."
-    return zip_longest(*[iter(iterable)]*n)
 
 class NWMergeNodesRefactored(Operator, NWBase):
     bl_idname = "node.fw_merge_nodes_refactored"
