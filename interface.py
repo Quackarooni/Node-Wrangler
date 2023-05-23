@@ -341,13 +341,15 @@ class NWBatchChangeNodesMenu(Menu, NWBase):
         if context.space_data.tree_type in ('GeometryNodeTree', 'ShaderNodeTree'):
             layout.menu(NWBatchChangeVectorOperationMenu.bl_idname)
 
+
         if context.space_data.tree_type == 'GeometryNodeTree':
+            layout.separator()
             layout.menu(NWBatchChangeBoolMenu.bl_idname)
 
 
 class NWBatchChangeBlendTypeMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_batch_change_blend_type_menu"
-    bl_label = "Batch Change Blend Type"
+    bl_label = "Change Mix Blend Type"
 
     def draw(self, context):
         layout = self.layout
@@ -361,7 +363,7 @@ class NWBatchChangeBlendTypeMenu(Menu, NWBase):
 
 class NWBatchChangeOperationMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_batch_change_operation_menu"
-    bl_label = "Batch Change Math Operation"
+    bl_label = "Change Math Operation"
 
     def draw(self, context):
         layout = self.layout
@@ -380,7 +382,7 @@ class NWBatchChangeOperationMenu(Menu, NWBase):
 
 class NWBatchChangeBoolMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_batch_change_bool_menu"
-    bl_label = "Batch Change Boolean Math Nodes"
+    bl_label = "Change Boolean Operation"
 
     def draw(self, context):
         layout = self.layout
@@ -395,7 +397,7 @@ class NWBatchChangeBoolMenu(Menu, NWBase):
 
 class NWBatchChangeVectorOperationMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_batch_change_vector_operation_menu"
-    bl_label = "Batch Change Vector Math Operation"
+    bl_label = "Change Vector Operation"
 
     def draw(self, context):
         layout = self.layout

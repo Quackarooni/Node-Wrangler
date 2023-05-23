@@ -2116,7 +2116,6 @@ class NWBatchChangeNodes(Operator, NWBase):
         items=vector_operations + navs,
     )
 
-
     bool_type: EnumProperty(
         name="Boolean Type",
         default = 'CURRENT',
