@@ -34,7 +34,8 @@ from .utils.constants import (
     vector_operations_list,
     boolean_operations_list,
     math_operations_list, 
-    navs, 
+    navs,
+    nav_list,
     get_nodes_from_category, 
     rl_outputs
     )
@@ -2144,7 +2145,7 @@ class NWBatchChangeNodes(Operator, NWBase):
         if value == 'CURRENT':
             return
 
-        elif value not in [nav[0] for nav in navs]:
+        elif value not in nav_list:
             prop_value = value
         else:
             current_value = getattr(node, property_name)
