@@ -111,6 +111,15 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
         ),
         default='MIDDLE',
         description="When merging nodes with the Ctrl+Numpad0 hotkey (and similar) specify the position of the new nodes")
+    
+    batch_change_behavior: EnumProperty(
+        name="Previous / Next Behavior",
+        items=(
+            ("CLAMP", "Clamp", "Don't allow moving past the beginning / end of a list"),
+            ("WRAP", "Wrap", "When going past the end of a list, wrap back to the beginning, and vice versa"),
+        ),
+        default='WRAP',
+        description="When changing to previous/next option during Batch Change, specify how the operator handles going past the boundaries of the option list")
 
     prefer_first_socket_binary: BoolProperty(
         name="Prefer First Socket",
@@ -161,6 +170,10 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
         col.label(text="Merge Node Options:")
         col.prop(self, "merge_position")
         col.prop(self, "merge_hide")
+        col.separator()
+
+        col.label(text="Batch Change Options:")
+        col.prop(self, "batch_change_behavior")
 
         box = layout.box()
         col = box.column(align=True)

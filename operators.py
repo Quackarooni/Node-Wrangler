@@ -2161,18 +2161,20 @@ class NWBatchChangeNodes(Operator, NWBase):
         if not context.selected_nodes:
             return {'CANCELLED'}
 
+        mode = fetch_user_preferences("batch_change_behavior") == 'WRAP'
+
         for node in context.selected_nodes:
             if node.type == 'MIX_RGB' or (node.bl_idname == 'ShaderNodeMix' and node.data_type == 'RGBA'):
-                self.set_node_property(node, "blend_type", value=self.blend_type, prop_list=blend_types_list, should_wrap=True)
+                self.set_node_property(node, "blend_type", value=self.blend_type, prop_list=blend_types_list, should_wrap=mode)
 
             if node.type == 'MATH' or node.bl_idname == 'ShaderNodeMath':
-                self.set_node_property(node, "operation", value=self.operation, prop_list=math_operations_list, should_wrap=True)
+                self.set_node_property(node, "operation", value=self.operation, prop_list=math_operations_list, should_wrap=mode)
 
             if node.type == 'VECTOR_MATH' or node.bl_idname == 'ShaderNodeVectorMath':
-                self.set_node_property(node, "operation", value=self.vector_operation, prop_list=vector_operations_list, should_wrap=True)
+                self.set_node_property(node, "operation", value=self.vector_operation, prop_list=vector_operations_list, should_wrap=mode)
 
             if node.type == 'BOOLEAN_MATH' or node.bl_idname == 'FunctionNodeBooleanMath':
-                self.set_node_property(node, "operation", value=self.bool_type, prop_list=boolean_operations_list, should_wrap=True)
+                self.set_node_property(node, "operation", value=self.bool_type, prop_list=boolean_operations_list, should_wrap=mode)
 
         #Somehow the operator stores the state from the last time it's called so a hard reset here was applied
         self.blend_type = 'CURRENT'
