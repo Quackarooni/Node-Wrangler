@@ -45,6 +45,7 @@ from .utils.nodes import (
     n_wise_iter,
     next_in_list,
     prev_in_list,
+    filter_by_type,
     node_mid_pt, 
     get_bounds, 
     fetch_user_preferences, 
@@ -2158,12 +2159,15 @@ class NWBatchChangeNodes(Operator, NWBase):
         setattr(node, property_name, prop_value)
 
     def execute(self, context):
-        if not context.selected_nodes:
+        nodes = list(filter_by_type(context.selected_nodes, 
+            types=('MIX_RGB', 'MATH', 'VECTOR_MATH', 'BOOLEAN_MATH')))
+
+        if len(nodes) <= 0:
             return {'CANCELLED'}
 
-        mode = fetch_user_preferences("batch_change_behavior") == 'WRAP'
+        mode = (fetch_user_preferences("batch_change_behavior") == 'WRAP')
 
-        for node in context.selected_nodes:
+        for node in nodes:
             if node.type == 'MIX_RGB' or (node.bl_idname == 'ShaderNodeMix' and node.data_type == 'RGBA'):
                 self.set_node_property(node, "blend_type", value=self.blend_type, prop_list=blend_types_list, should_wrap=mode)
 
