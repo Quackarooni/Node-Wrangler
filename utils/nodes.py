@@ -2,13 +2,13 @@
 
 import bpy
 from math import hypot
-from itertools import zip_longest
+from itertools import zip_longest, filterfalse
 
 def n_wise_iter(iterable, n):
     "s -> (s0,s1,s2,...sn-1), (sn,sn+1,sn+2,...s2n-1), (s2n,s2n+1,s2n+2,...s3n-1), ..."
     return zip_longest(*[iter(iterable)]*n)
 
-def filter_by_type(nodes, types, tree_type=None):
+def filter_by_type(nodes, types, tree_type=None, *, invert=False):
     if isinstance(types, str):
         types = (types,)
 
@@ -17,20 +17,19 @@ def filter_by_type(nodes, types, tree_type=None):
 
     if tree_type in ('ShaderNodeTree', 'GeometryNodeTree'):
         if 'MIX_RGB' in types:
-            for node in nodes:
-                if (node.type in types) or (node.bl_idname == 'ShaderNodeMix' and node.data_type == 'RGBA'):
-                    yield node
+            condition = lambda n : (n.type in types) or (n.bl_idname == 'ShaderNodeMix' and n.data_type == 'RGBA')
         else:
-            for node in nodes:
-                if node.type in types:
-                    yield node
+            condition = lambda n : (n.type in types)
 
     elif tree_type in ('CompositorNodeTree', 'TextureNodeTree'):
-        for node in nodes:
-            if node.type in types:
-                yield node
+        condition = lambda n : (n.type in types)
     else:
         raise NotImplementedError(f"Function has no implemented behavior for NodeTree of type {tree_type}")
+
+    if invert:
+        return filterfalse(condition, nodes)
+    else:
+        return filter(condition, nodes)
 
 def next_in_list(items, key, *, wrap=False):
     index = items.index(key)
