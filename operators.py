@@ -1773,7 +1773,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
             new_nodes.append(new_node)
 
-        context.space_data.node_tree.nodes.active = new_node
+        context.space_data.edit_tree.nodes.active = new_node
         return new_nodes
 
     def chain_merge(self, context, selected_nodes, data, group_size):
@@ -1797,7 +1797,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=data.socket_data_type, target_index=index)
                 links.new(from_socket, to_socket)
 
-            context.space_data.node_tree.nodes.active = new_node
+            context.space_data.edit_tree.nodes.active = new_node
             return [new_node, ]
 
         new_nodes = []
@@ -1838,7 +1838,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
             prev_socket = self.get_valid_socket(new_node, mode='Outputs', data_types=data.preferred_input_type)
             new_nodes.append(new_node)
 
-        context.space_data.node_tree.nodes.active = new_node
+        context.space_data.edit_tree.nodes.active = new_node
         return new_nodes
 
     def batch_merge(self, context, selected_nodes, data):
@@ -1872,7 +1872,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
             links.new(first_from_socket, first_to_socket)
 
-        context.space_data.node_tree.nodes.active = new_node
+        context.space_data.edit_tree.nodes.active = new_node
         return [new_node, ]
 
     def setup_function_data(self, context, function_type, operation_type):
