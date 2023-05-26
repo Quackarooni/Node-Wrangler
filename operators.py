@@ -32,7 +32,7 @@ from .utils.constants import (
     operations,
     blend_types_list,
     vector_operations_list,
-    boolean_operations_list,
+    bool_operations_list,
     math_operations_list, 
     navs,
     nav_list,
@@ -2123,7 +2123,7 @@ class NWBatchChangeNodes(Operator, NWBase):
         default = 'CURRENT',
         items=blend_types + navs,
     )
-    operation: EnumProperty(
+    math_operation: EnumProperty(
         name="Operation",
         default = 'CURRENT',
         items=operations + navs,
@@ -2135,7 +2135,7 @@ class NWBatchChangeNodes(Operator, NWBase):
         items=vector_operations + navs,
     )
 
-    bool_type: EnumProperty(
+    bool_operation: EnumProperty(
         name="Boolean Type",
         default = 'CURRENT',
         items=boolean_operations + navs,
@@ -2174,7 +2174,7 @@ class NWBatchChangeNodes(Operator, NWBase):
 
             if node.type == 'MATH':
                 self.set_node_property(node, "operation", 
-                    value=self.operation, prop_list=math_operations_list, should_wrap=mode)
+                    value=self.math_operation, prop_list=math_operations_list, should_wrap=mode)
 
             if node.type == 'VECT_MATH':
                 self.set_node_property(node, "operation", 
@@ -2182,13 +2182,13 @@ class NWBatchChangeNodes(Operator, NWBase):
 
             if node.type == 'BOOLEAN_MATH':
                 self.set_node_property(node, "operation", 
-                    value=self.bool_type, prop_list=boolean_operations_list, should_wrap=mode)
+                    value=self.bool_operation, prop_list=bool_operations_list, should_wrap=mode)
 
         #Somehow the operator stores the state from the last time it's called so a hard reset here was applied
         self.blend_type = 'CURRENT'
-        self.operation = 'CURRENT'
+        self.math_operation = 'CURRENT'
         self.vector_operation = 'CURRENT'
-        self.bool_type = 'CURRENT'
+        self.bool_operation = 'CURRENT'
         return {'FINISHED'}
 
 

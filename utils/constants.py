@@ -330,7 +330,7 @@ navs = [
 ]
 
 blend_types_list = [item[0] for item in blend_types]
-boolean_operations_list = [item[0] for item in boolean_operations]
+bool_operations_list = [item[0] for item in boolean_operations]
 vector_operations_list  = [item[0] for item in vector_operations]
 math_operations_list = [item[0] for item in operations]
 nav_list = [nav[0] for nav in navs]
