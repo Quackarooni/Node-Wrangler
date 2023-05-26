@@ -45,7 +45,7 @@ from .utils.nodes import (
     n_wise_iter,
     next_in_list,
     prev_in_list,
-    filter_by_type,
+    filter_nodes_by_type,
     node_mid_pt, 
     get_bounds, 
     fetch_user_preferences, 
@@ -2159,7 +2159,7 @@ class NWBatchChangeNodes(Operator, NWBase):
         setattr(node, property_name, prop_value)
 
     def execute(self, context):
-        nodes = list(filter_by_type(context.selected_nodes, 
+        nodes = list(filter_nodes_by_type(context.selected_nodes, 
             types=('MIX_RGB', 'MATH', 'VECT_MATH', 'BOOLEAN_MATH')))
 
         if len(nodes) <= 0:
