@@ -12,7 +12,7 @@ class NWKeymapEntry:
     ctrl: bool = False
     shift: bool = False
     alt: bool = False
-    shift: bool = False
+    oskey: bool = False
     any_modifier: bool = False
     custom_modifier: str = 'NONE'
     

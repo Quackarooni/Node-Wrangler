@@ -250,33 +250,28 @@ def register():
     kc = bpy.context.window_manager.keyconfigs.addon
     if kc:
         km = kc.keymaps.new(name='Node Editor', space_type="NODE_EDITOR")
+        for entry in kmi_defs:
+            kmi = km.keymap_items.new(
+                entry.bl_idname, 
+                type=entry.key_type, 
+                value=entry.input_mode, 
+                any=entry.any_modifier,
+                shift=entry.shift, 
+                ctrl=entry.ctrl, 
+                alt=entry.alt, 
+                oskey=entry.oskey,
+                key_modifier=entry.custom_modifier,
+                repeat=entry.repeat,
+                direction=entry.direction,
+                head=entry.head
+                )
 
-        show_old_keymaps = False
-        if show_old_keymaps:
-            from .keymap_defs import kmi_defs_old
-            for (identifier, key, action, CTRL, SHIFT, ALT, props, nicename) in kmi_defs_old:
-                kmi = km.keymap_items.new(identifier, key, action, ctrl=CTRL, shift=SHIFT, alt=ALT)
-                if props:
-                    for prop, value in props:
-                        setattr(kmi.properties, prop, value)
-                addon_keymaps.append((km, kmi))
-        else:
-            for entry in kmi_defs:
-                kmi = km.keymap_items.new(entry.bl_idname, type=entry.key_type, value=entry.input_mode, ctrl=entry.ctrl, shift=entry.shift, alt=entry.alt, repeat=entry.repeat)
-
-                props = entry.props
-                if props is not None:
-                    for prop, value in props.items():
-                        setattr(kmi.properties, prop, value)
-                
-                addon_keymaps.append((km, kmi))
-
-        #for (identifier, key, action, CTRL, SHIFT, ALT, props, nicename) in kmi_defs:
-        #    kmi = km.keymap_items.new(identifier, key, action, ctrl=CTRL, shift=SHIFT, alt=ALT)
-        #    if props:
-        #        for prop, value in props:
-        #            setattr(kmi.properties, prop, value)
-        #    addon_keymaps.append((km, kmi))
+            props = entry.props
+            if props is not None:
+                for prop, value in props.items():
+                    setattr(kmi.properties, prop, value)
+            
+            addon_keymaps.append((km, kmi))
 
     # switch submenus
     switch_category_menus.clear()
