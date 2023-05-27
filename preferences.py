@@ -222,7 +222,7 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
                 if hotkey.ctrl:
                     keystr = "Ctrl " + keystr   
 
-                return f"( {keystr} )"         
+                return f"{keystr}"         
 
             def keymap_display(hotkey):
                 return hotkey.display_name
@@ -234,12 +234,15 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
 
             for hotkey_label, entries in sorted(grouped_hotkeys, key=lambda n :original_order[n[0]]):
                 if (self.hotkey_list_filter.lower() in hotkey_label.lower()):
-                    row = col.row(align=True)
-                    row.label(text=hotkey_label)
-
-                    keystrs = " ,  ".join(get_keystroke(entry) for entry in entries)
-                    row.label(text=keystrs)
-                    
+                    # Display Name takes up 71.5% of the display width,
+                    # while the keystroke takes the remaining 28.5%
+                    split = col.split(factor=0.715)
+                    split.label(text=hotkey_label)
+                
+                    subcol = split.column(align=True)
+                    for entry in entries:
+                        subcol.label(text=get_keystroke(entry))
+                        
             return
 #
 #  REGISTER/UNREGISTER CLASSES AND KEYMAP ITEMS
