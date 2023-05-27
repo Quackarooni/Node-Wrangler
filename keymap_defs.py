@@ -113,7 +113,7 @@ kmi_defs = (
     NWKeymapEntry(operators.NWReloadImages.bl_idname, "Reload Images", key_type='R', alt=True),
     NWKeymapEntry(operators.NWLazyMix.bl_idname, "Lazy Mix", key_type='RIGHTMOUSE', ctrl=True, shift=True),
     NWKeymapEntry(operators.NWLazyConnect.bl_idname, "Lazy Connect", key_type='RIGHTMOUSE', alt=True, props={'with_menu':False}),
-    NWKeymapEntry(operators.NWLazyConnect.bl_idname, "Lazy Connect with Socket Menu", key_type='RIGHTMOUSE', shift=True, alt=True, props={'with_menu':True}),
+    NWKeymapEntry(operators.NWLazyConnect.bl_idname, "Lazy Connect (with Socket Menu)", key_type='RIGHTMOUSE', shift=True, alt=True, props={'with_menu':True}),
     NWKeymapEntry(operators.NWViewerFocus.bl_idname, "Set Viewer's Tile Center", key_type='LEFTMOUSE', input_mode='DOUBLE_CLICK'),
     NWKeymapEntry(operators.NWAlignNodes.bl_idname, "Auto-Align Nodes", key_type='EQUAL', shift=True),
     NWKeymapEntry(operators.NWResetNodes.bl_idname, "Reset Nodes", key_type='BACK_SPACE'),
