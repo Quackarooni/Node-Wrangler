@@ -74,8 +74,8 @@ kmi_defs = (
     NWKeymapEntry(operators.NWBatchChangeNodes.bl_idname, "Batch Change (Divide)", key_type='SLASH', alt=True, props={'blend_type':'DIVIDE', 'math_operation':'DIVIDE', 'vector_operation':'DIVIDE', 'bool_operation':'NOT'}),
     NWKeymapEntry(operators.NWBatchChangeNodes.bl_idname, "Batch Change (Less Than)", key_type='COMMA', alt=True, props={'math_operation':'LESS_THAN'}),
     NWKeymapEntry(operators.NWBatchChangeNodes.bl_idname, "Batch Change (Greater Than)", key_type='PERIOD', alt=True, props={'math_operation':'GREATER_THAN'}),
-    NWKeymapEntry(operators.NWBatchChangeNodes.bl_idname, "Batch Change (Previous)", key_type='UP_ARROW', alt=True, props={'blend_type':'PREV', 'math_operation':'PREV', 'vector_operation':'PREV', 'bool_operation':'PREV'}),
-    NWKeymapEntry(operators.NWBatchChangeNodes.bl_idname, "Batch Change (Next)", key_type='DOWN_ARROW', alt=True, props={'blend_type':'NEXT', 'math_operation':'NEXT', 'vector_operation':'NEXT', 'bool_operation':'NEXT',}),
+    NWKeymapEntry(operators.NWBatchChangeNodes.bl_idname, "Batch Change (Previous)", key_type='UP_ARROW', repeat=True, alt=True, props={'blend_type':'PREV', 'math_operation':'PREV', 'vector_operation':'PREV', 'bool_operation':'PREV'}),
+    NWKeymapEntry(operators.NWBatchChangeNodes.bl_idname, "Batch Change (Next)", key_type='DOWN_ARROW', repeat=True, alt=True, props={'blend_type':'NEXT', 'math_operation':'NEXT', 'vector_operation':'NEXT', 'bool_operation':'NEXT',}),
     # LINK ACTIVE TO SELECTED
     NWKeymapEntry(operators.NWLinkActiveToSelected.bl_idname, "Link active to selected (Don't replace links)", key_type='K', shift=False, props={'replace':False, 'use_node_name':False, 'use_outputs_names':False}),
     NWKeymapEntry(operators.NWLinkActiveToSelected.bl_idname, "Link active to selected (Replace links)", key_type='K', shift=True, props={'replace':True, 'use_node_name':False, 'use_outputs_names':False}),

@@ -201,7 +201,7 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
 
         box = layout.box()
         col = box.column(align=True)
-        
+
         hotkey_button_name = "Show Hotkey List"
         if self.show_hotkey_list:
             hotkey_button_name = "Hide Hotkey List"
@@ -262,7 +262,7 @@ def register():
                 addon_keymaps.append((km, kmi))
         else:
             for entry in kmi_defs:
-                kmi = km.keymap_items.new(entry.bl_idname, type=entry.key_type, value=entry.input_mode, ctrl=entry.ctrl, shift=entry.shift, alt=entry.alt)
+                kmi = km.keymap_items.new(entry.bl_idname, type=entry.key_type, value=entry.input_mode, ctrl=entry.ctrl, shift=entry.shift, alt=entry.alt, repeat=entry.repeat)
 
                 props = entry.props
                 if props is not None:
