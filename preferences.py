@@ -9,7 +9,7 @@ from . import interface
 
 from .utils.constants import nice_hotkey_name
 from rna_keymap_ui import _indented_layout as indented_layout
-
+from itertools import groupby
 
 # Principled prefs
 class NWPrincipledPreferences(bpy.types.PropertyGroup):
@@ -212,23 +212,35 @@ class NWNodeWrangler(bpy.types.AddonPreferences):
             col.prop(self, "hotkey_list_filter", icon="VIEWZOOM")
             col = indented_layout(col, level=1)
             col.separator()
-            for hotkey in kmi_defs:
-                hotkey_label = hotkey.display_name
-                if not hotkey_label:
-                    continue
 
+            def get_keystroke(hotkey):
+                keystr = nice_hotkey_name(hotkey.key_type)
+                if hotkey.shift:
+                    keystr = "Shift " + keystr
+                if hotkey.alt:
+                    keystr = "Alt " + keystr
+                if hotkey.ctrl:
+                    keystr = "Ctrl " + keystr   
+
+                return f"( {keystr} )"         
+
+            def keymap_display(hotkey):
+                return hotkey.display_name
+
+            original_order = {key.display_name:i for i, key in enumerate(kmi_defs)}
+            # Since the grouped hotkeys are iterated through twice(resorting, and display), 
+            # the iterators provided by groupby should be turned into tuples
+            grouped_hotkeys = ((i, tuple(j)) for i, j in groupby(sorted(kmi_defs, key=keymap_display), key=keymap_display))
+
+            for hotkey_label, entries in sorted(grouped_hotkeys, key=lambda n :original_order[n[0]]):
                 if (self.hotkey_list_filter.lower() in hotkey_label.lower()):
                     row = col.row(align=True)
                     row.label(text=hotkey_label)
-                    keystr = nice_hotkey_name(hotkey.key_type)
-                    if hotkey.shift:
-                        keystr = "Shift " + keystr
-                    if hotkey.alt:
-                        keystr = "Alt " + keystr
-                    if hotkey.ctrl:
-                        keystr = "Ctrl " + keystr
-                    row.label(text=keystr)
 
+                    keystrs = " ,  ".join(get_keystroke(entry) for entry in entries)
+                    row.label(text=keystrs)
+                    
+            return
 #
 #  REGISTER/UNREGISTER CLASSES AND KEYMAP ITEMS
 #
