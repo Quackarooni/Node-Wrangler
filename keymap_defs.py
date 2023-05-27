@@ -118,12 +118,12 @@ kmi_defs = (
     NWKeymapEntry(operators.NWAlignNodes.bl_idname, "Auto-Align Nodes", key_type='EQUAL', shift=True),
     NWKeymapEntry(operators.NWResetNodes.bl_idname, "Reset Nodes", key_type='BACK_SPACE'),
     # MENUS
-    NWKeymapEntry('wm.call_menu', "Node Wrangler Context Menu", 'W', shift=True, props={'name':interface.NodeWranglerMenu.bl_idname}),
-    NWKeymapEntry('wm.call_menu', "Add Reroutes Menu", 'SLASH', props={'name':interface.NWAddReroutesMenu.bl_idname}),
-    NWKeymapEntry('wm.call_menu', "Add Reroutes Menu", 'NUMPAD_SLASH', props={'name':interface.NWAddReroutesMenu.bl_idname}),
-    NWKeymapEntry('wm.call_menu', "Link Active to Selected (Menu)", 'BACK_SLASH', props={'name':interface.NWLinkActiveToSelectedMenu.bl_idname}),
-    NWKeymapEntry('wm.call_menu', "Copy to Selected (Menu)", 'C',  shift=True, props={'name':interface.NWCopyToSelectedMenu.bl_idname}),
-    NWKeymapEntry('wm.call_menu', "Switch Node Type (Menu)", 'S',  shift=True, props={'name':interface.NWSwitchNodeTypeMenu.bl_idname}),
+    NWKeymapEntry('wm.call_menu', "Spawn Context Menu", 'W', shift=True, props={'name':interface.NodeWranglerMenu.bl_idname}),
+    NWKeymapEntry('wm.call_menu', "Spawn Menu (Add Reroutes)", 'SLASH', props={'name':interface.NWAddReroutesMenu.bl_idname}),
+    NWKeymapEntry('wm.call_menu', "Spawn Menu (Add Reroutes)", 'NUMPAD_SLASH', props={'name':interface.NWAddReroutesMenu.bl_idname}),
+    NWKeymapEntry('wm.call_menu', "Spawn Menu (Link Active to Selected)", 'BACK_SLASH', props={'name':interface.NWLinkActiveToSelectedMenu.bl_idname}),
+    NWKeymapEntry('wm.call_menu', "Spawn Menu (Copy to Selected)", 'C',  shift=True, props={'name':interface.NWCopyToSelectedMenu.bl_idname}),
+    NWKeymapEntry('wm.call_menu', "Spawn Menu (Switch Node Type)", 'S',  shift=True, props={'name':interface.NWSwitchNodeTypeMenu.bl_idname}),
 )
 
 # kmi_defs entry: (identifier, key, action, CTRL, SHIFT, ALT, props, nice name)
