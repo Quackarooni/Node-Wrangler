@@ -552,24 +552,20 @@ class NWSwitchNodeTypeMenu(Menu, NWBase):
         tree_type = context.space_data.tree_type
 
 
-        if tree_type != 'GeometryNodeTree':
-            categories = [c for c in node_categories_iter(context)
-                        if c.name not in ['Group', 'Script']]
-            for cat in categories:
-                idname = f"NODE_MT_fw_switch_{cat.identifier}_submenu"
-                if hasattr(bpy.types, idname):
-                    if cat.name == 'Layout':
-                        from .switch_nodes_geometrymenus import NODE_MT_NWSwitchNodes_GN_group
-                        layout.menu(NODE_MT_NWSwitchNodes_GN_group.bl_idname)
+        categories = [c for c in node_categories_iter(context)
+                    if c.name not in ['Group', 'Script']]
+        for cat in categories:
+            idname = f"NODE_MT_fw_switch_{cat.identifier}_submenu"
+            if hasattr(bpy.types, idname):
+                if cat.name == 'Layout':
+                    from .switch_nodes_geometrymenus import NODE_MT_NWSwitchNodes_GN_group
+                    layout.menu(NODE_MT_NWSwitchNodes_GN_group.bl_idname)
 
-                    layout.menu(idname)
-                else:
-                    layout.label(text="Unable to load altered node lists.")
-                    layout.label(text="Please re-enable Node Wrangler.")
-                    break
-        else:
-            from .switch_nodes_geometrymenus import NODE_MT_NWSwitchNodes_GN
-            layout.menu_contents(NODE_MT_NWSwitchNodes_GN.bl_idname)
+                layout.menu(idname)
+            else:
+                layout.label(text="Unable to load altered node lists.")
+                layout.label(text="Please re-enable Node Wrangler.")
+                break
 
 def draw_switch_category_submenu(self, context):
     layout = self.layout
