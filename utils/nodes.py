@@ -64,6 +64,11 @@ def fetch_user_preferences(attr_id=None):
     else:
         return getattr(prefs, attr_id)
 
+def get_sim_output_node(node):
+    if node.bl_idname == 'GeometryNodeSimulationInput':
+        return node.paired_output
+    if node.bl_idname == 'GeometryNodeSimulationOutput':
+        return node
 
 def connect_sockets(input, output):
     """
@@ -85,19 +90,32 @@ def connect_sockets(input, output):
     output_node = input.node
 
     if input_node.id_data is not output_node.id_data:
-        print("Sockets do not belong to the same node tree")
+        #print("Sockets do not belong to the same node tree")
         return
 
     if type(input) == type(output) == bpy.types.NodeSocketVirtual:
-        print("Cannot connect two virtual sockets together")
+        #print("Cannot connect two virtual sockets together")
         return
+    
+    if input.type != output.type and ("NodeSocketVirtual" not in (input.bl_idname, output.bl_idname)):
+        if 'GEOMETRY' in (input.type, output.type):
+            #print("Cannot connect geometry and non-geometry socket together")
+            return 
 
-    if output_node.type == 'GROUP_OUTPUT' and type(input) == bpy.types.NodeSocketVirtual:
+    if output_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and type(input) == bpy.types.NodeSocketVirtual:
+        get_sim_output_node(output_node).state_items.new(output.type, output.name)
+        input = output_node.inputs[-2]
+
+    if input_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT')  and type(output) == bpy.types.NodeSocketVirtual:
+        get_sim_output_node(input_node).state_items.new(input.type, input.name)
+        output = input_node.outputs[-2]
+
+    if output_node.type in ('GROUP_OUTPUT',) and type(input) == bpy.types.NodeSocketVirtual:
         output_node.id_data.outputs.new(type(output).__name__, output.name)
         input = output_node.inputs[-2]
 
-    if input_node.type == 'GROUP_INPUT' and type(output) == bpy.types.NodeSocketVirtual:
-        output_node.id_data.inputs.new(type(input).__name__, input.name)
+    if input_node.type in ('GROUP_INPUT',) and type(output) == bpy.types.NodeSocketVirtual:
+        input_node.id_data.inputs.new(type(input).__name__, input.name)
         output = input_node.outputs[-2]
 
     return input_node.id_data.links.new(input, output)
@@ -154,6 +172,9 @@ class FinishedAutolink(Exception):
     def __init__(self, *args):
         pass
 
+def is_virtual_socket(socket):
+    return socket.bl_idname == "NodeSocketVirtual"
+
 def autolink(node1, node2, links):
     available_inputs = [inp for inp in node2.inputs if inp.enabled]
     available_outputs = [outp for outp in node1.outputs if outp.enabled]
@@ -164,8 +185,10 @@ def autolink(node1, node2, links):
         for outp in outputs:
             for inp in inputs:
                 if condition(inp, outp):
-                    links.new(outp, inp)
-                    raise FinishedAutolink
+                    new_link = connect_sockets(outp, inp)
+
+                    if new_link is not None:
+                        raise FinishedAutolink
 
 
     autolink_iter(visible_inputs, visible_outputs, 

@@ -4,6 +4,7 @@ import bpy
 from bpy.types import Panel, Menu
 from bpy.props import StringProperty
 from nodeitems_utils import node_categories_iter, NodeItemCustom
+from bpy_extras.node_utils import connect_sockets
 
 from . import operators
 
