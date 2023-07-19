@@ -99,7 +99,7 @@ def connect_sockets(input, output):
         #print("Sockets do not belong to the same node tree")
         return
 
-    if is_virtual_socket(input) and is_virtual_socket(output):
+    if is_virtual_socket(sockets=(input, output)):
         #print("Cannot connect two virtual sockets together")
         return
     
@@ -148,11 +148,11 @@ def connect_sockets(input, output):
         get_repeat_output_node(input_node).repeat_items.new(input_type, input.name)
         output = input_node.outputs[-2]
 
-    if output_node.type in ('GROUP_OUTPUT',) and type(input) == bpy.types.NodeSocketVirtual:
+    if output_node.type in ('GROUP_OUTPUT',) and is_virtual_socket(input):
         output_node.id_data.outputs.new(type(output).__name__, output.name)
         input = output_node.inputs[-2]
 
-    if input_node.type in ('GROUP_INPUT',) and type(output) == bpy.types.NodeSocketVirtual:
+    if input_node.type in ('GROUP_INPUT',) and is_virtual_socket(output):
         input_node.id_data.inputs.new(type(input).__name__, input.name)
         output = input_node.outputs[-2]
 
@@ -210,8 +210,11 @@ class FinishedAutolink(Exception):
     def __init__(self, *args):
         pass
 
-def is_virtual_socket(socket):
-    return isinstance(socket, bpy.types.NodeSocketVirtual)
+def is_virtual_socket(sockets):
+    if isinstance(sockets, bpy.types.NodeSocket):
+        return isinstance(sockets, bpy.types.NodeSocketVirtual)
+    else:
+        return all(isinstance(soc, bpy.types.NodeSocketVirtual) for soc in sockets)
 
 def autolink(node1, node2, links):
     available_inputs = [inp for inp in node2.inputs if inp.enabled]
