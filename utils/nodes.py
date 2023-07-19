@@ -3,6 +3,7 @@
 import bpy
 from math import hypot
 from itertools import zip_longest, filterfalse
+from .constants import valid_sim_sockets
 
 def n_wise_iter(iterable, n):
     "s -> (s0,s1,s2,...sn-1), (sn,sn+1,sn+2,...s2n-1), (s2n,s2n+1,s2n+2,...s3n-1), ..."
@@ -134,10 +135,12 @@ def connect_sockets(input, output):
             return 
 
     if output_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and is_virtual_socket(input):
-        input = create_from_virtual(source=output, node=output_node, container_name="state_items")
+        if output.type in valid_sim_sockets:
+            input = create_from_virtual(source=output, node=output_node, container_name="state_items")
 
     if input_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and is_virtual_socket(output):
-        output = create_from_virtual(source=input, node=input_node, container_name="state_items")
+        if input.type in valid_sim_sockets:
+            output = create_from_virtual(source=input, node=input_node, container_name="state_items")
 
     if output_node.type in ('REPEAT_INPUT', 'REPEAT_OUTPUT') and is_virtual_socket(input):
         input = create_from_virtual(source=output, node=output_node, container_name="repeat_items")

@@ -40,6 +40,8 @@ rl_outputs = (
     RL_entry('use_pass_z', 'Z', 'Depth', True, True),
 )
 
+valid_sim_sockets = ('FLOAT', 'INT', 'BOOLEAN', 'VECTOR', 'ROTATION', 'STRING', 'RGBA', 'GEOMETRY')
+
 # list of blend types of "Mix" nodes in a form that can be used as 'items' for EnumProperty.
 # used list, not tuple for easy merging with other lists.
 blend_types = [
