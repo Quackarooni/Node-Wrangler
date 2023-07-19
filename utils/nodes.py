@@ -102,9 +102,9 @@ def connect_sockets(input, output):
             #print("Cannot connect geometry and non-geometry socket together")
             return 
 
-    if ('SHADER' == output.type) and ('SHADER' != input.type):
-        #print("Cannot connect shader output to not shader input")
-        return 
+        if ('SHADER' == output.type) and ('SHADER' != input.type):
+            #print("Cannot connect shader output to not shader input")
+            return 
 
     if output_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and type(input) == bpy.types.NodeSocketVirtual:
         get_sim_output_node(output_node).state_items.new(output.type, output.name)
