@@ -64,17 +64,22 @@ def fetch_user_preferences(attr_id=None):
     else:
         return getattr(prefs, attr_id)
 
-def get_sim_output_node(node):
-    if node.bl_idname == 'GeometryNodeSimulationInput':
+def get_zone_output_node(node):
+    valid_zone_nodes = (
+        'GeometryNodeSimulationInput',
+        'GeometryNodeSimulationOutput',
+        'GeometryNodeRepeatInput',
+        'GeometryNodeRepeatOutput'
+    )
+
+    if node.bl_idname not in valid_zone_nodes:
+        raise TypeError(f"{node} is not a valid zone node")
+
+    if node.bl_idname.endswith("Input"):
         return node.paired_output
-    if node.bl_idname == 'GeometryNodeSimulationOutput':
+    else:
         return node
 
-def get_repeat_output_node(node):
-    if node.bl_idname == 'GeometryNodeRepeatInput':
-        return node.paired_output
-    if node.bl_idname == 'GeometryNodeRepeatOutput':
-        return node
 
 def connect_sockets(input, output):
     """
@@ -118,7 +123,7 @@ def connect_sockets(input, output):
         if output_type == "VALUE":
             output_type = "FLOAT"
         
-        get_sim_output_node(output_node).state_items.new(output_type, output.name)
+        get_zone_output_node(output_node).state_items.new(output_type, output.name)
         input = output_node.inputs[-2]
 
     if input_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and is_virtual_socket(output):
@@ -127,7 +132,7 @@ def connect_sockets(input, output):
         if input_type == "VALUE":
             input_type = "FLOAT"
 
-        get_sim_output_node(input_node).state_items.new(input_type, input.name)
+        get_zone_output_node(input_node).state_items.new(input_type, input.name)
         output = input_node.outputs[-2]
 
     if output_node.type in ('REPEAT_INPUT', 'REPEAT_OUTPUT') and is_virtual_socket(input):
@@ -136,7 +141,7 @@ def connect_sockets(input, output):
         if output_type == "VALUE":
             output_type = "FLOAT"
         
-        get_repeat_output_node(output_node).repeat_items.new(output_type, output.name)
+        get_zone_output_node(output_node).repeat_items.new(output_type, output.name)
         input = output_node.inputs[-2]
 
     if input_node.type in ('REPEAT_INPUT', 'REPEAT_OUTPUT') and is_virtual_socket(output):
@@ -145,7 +150,7 @@ def connect_sockets(input, output):
         if input_type == "VALUE":
             input_type = "FLOAT"
 
-        get_repeat_output_node(input_node).repeat_items.new(input_type, input.name)
+        get_zone_output_node(input_node).repeat_items.new(input_type, input.name)
         output = input_node.outputs[-2]
 
     if output_node.type in ('GROUP_OUTPUT',) and is_virtual_socket(input):
