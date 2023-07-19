@@ -93,11 +93,11 @@ def connect_sockets(input, output):
         #print("Sockets do not belong to the same node tree")
         return
 
-    if type(input) == type(output) == bpy.types.NodeSocketVirtual:
+    if is_virtual_socket(input) and is_virtual_socket(output):
         #print("Cannot connect two virtual sockets together")
         return
     
-    if input.type != output.type and ("NodeSocketVirtual" not in (input.bl_idname, output.bl_idname)):
+    if input.type != output.type and not (is_virtual_socket(input) and is_virtual_socket(output)):
         if 'GEOMETRY' in (input.type, output.type):
             #print("Cannot connect geometry and non-geometry socket together")
             return 
@@ -177,7 +177,7 @@ class FinishedAutolink(Exception):
         pass
 
 def is_virtual_socket(socket):
-    return socket.bl_idname == "NodeSocketVirtual"
+    return isinstance(socket, bpy.types.NodeSocketVirtual)
 
 def autolink(node1, node2, links):
     available_inputs = [inp for inp in node2.inputs if inp.enabled]
