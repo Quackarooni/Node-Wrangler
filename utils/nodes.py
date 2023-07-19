@@ -103,7 +103,7 @@ def connect_sockets(input, output):
         #print("Cannot connect two virtual sockets together")
         return
     
-    if input.type != output.type and not (is_virtual_socket(input) and is_virtual_socket(output)):
+    if input.type != output.type and not (is_virtual_socket(input) or is_virtual_socket(output)):
         if 'GEOMETRY' in (input.type, output.type):
             #print("Cannot connect geometry and non-geometry socket together")
             return 
