@@ -102,6 +102,10 @@ def connect_sockets(input, output):
             #print("Cannot connect geometry and non-geometry socket together")
             return 
 
+    if ('SHADER' == output.type) and ('SHADER' != input.type):
+        #print("Cannot connect shader output to not shader input")
+        return 
+
     if output_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and type(input) == bpy.types.NodeSocketVirtual:
         get_sim_output_node(output_node).state_items.new(output.type, output.name)
         input = output_node.inputs[-2]
@@ -218,7 +222,7 @@ def autolink(node1, node2, links):
     autolink_iter(available_inputs, available_outputs, 
         condition=(lambda inp, outp: not inp.is_linked and inp.type == outp.type))
     autolink_iter(visible_inputs, visible_outputs)
-    
+
     print("Could not make a link from " + node1.name + " to " + node2.name)
 
 
