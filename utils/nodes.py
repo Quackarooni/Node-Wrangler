@@ -70,6 +70,12 @@ def get_sim_output_node(node):
     if node.bl_idname == 'GeometryNodeSimulationOutput':
         return node
 
+def get_repeat_output_node(node):
+    if node.bl_idname == 'GeometryNodeRepeatInput':
+        return node.paired_output
+    if node.bl_idname == 'GeometryNodeRepeatOutput':
+        return node
+
 def connect_sockets(input, output):
     """
     Connect sockets in a node tree.
@@ -106,12 +112,40 @@ def connect_sockets(input, output):
             #print("Cannot connect shader output to not shader input")
             return 
 
-    if output_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and type(input) == bpy.types.NodeSocketVirtual:
-        get_sim_output_node(output_node).state_items.new(output.type, output.name)
+    if output_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and is_virtual_socket(input):
+        #Simulation nodes call float types 'FLOAT' while other parts of the API call it 'VALUE'
+        output_type = output.type
+        if output_type == "VALUE":
+            output_type = "FLOAT"
+        
+        get_sim_output_node(output_node).state_items.new(output_type, output.name)
         input = output_node.inputs[-2]
 
-    if input_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT')  and type(output) == bpy.types.NodeSocketVirtual:
-        get_sim_output_node(input_node).state_items.new(input.type, input.name)
+    if input_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and is_virtual_socket(output):
+        #Simulation nodes call float types 'FLOAT' while other parts of the API call it 'VALUE'
+        input_type = input.type
+        if input_type == "VALUE":
+            input_type = "FLOAT"
+
+        get_sim_output_node(input_node).state_items.new(input_type, input.name)
+        output = input_node.outputs[-2]
+
+    if output_node.type in ('REPEAT_INPUT', 'REPEAT_OUTPUT') and is_virtual_socket(input):
+        #Simulation nodes call float types 'FLOAT' while other parts of the API call it 'VALUE'
+        output_type = output.type
+        if output_type == "VALUE":
+            output_type = "FLOAT"
+        
+        get_repeat_output_node(output_node).repeat_items.new(output_type, output.name)
+        input = output_node.inputs[-2]
+
+    if input_node.type in ('REPEAT_INPUT', 'REPEAT_OUTPUT') and is_virtual_socket(output):
+        #Simulation nodes call float types 'FLOAT' while other parts of the API call it 'VALUE'
+        input_type = input.type
+        if input_type == "VALUE":
+            input_type = "FLOAT"
+
+        get_repeat_output_node(input_node).repeat_items.new(input_type, input.name)
         output = input_node.outputs[-2]
 
     if output_node.type in ('GROUP_OUTPUT',) and type(input) == bpy.types.NodeSocketVirtual:
