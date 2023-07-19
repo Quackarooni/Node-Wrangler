@@ -80,6 +80,22 @@ def get_zone_output_node(node):
     else:
         return node
 
+def create_from_virtual(source, node, container_name):
+    #if output_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and is_virtual_socket(input):
+    #Simulation nodes call float types 'FLOAT' while other parts of the API call it 'VALUE'
+    source_type = source.type
+    if source_type == "VALUE":
+        source_type = "FLOAT"
+    
+    items = getattr(get_zone_output_node(node), container_name)
+    items.new(source_type, source.name)
+
+    #Right now, this isn't necessary, as zone inputs/outputs are tied together
+    #But it's still good form to distinguish whether what we are returning is an input/output
+    if source.is_output:
+        return node.inputs[-2]
+    else:
+        return node.outputs[-2]
 
 def connect_sockets(input, output):
     """
@@ -118,40 +134,16 @@ def connect_sockets(input, output):
             return 
 
     if output_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and is_virtual_socket(input):
-        #Simulation nodes call float types 'FLOAT' while other parts of the API call it 'VALUE'
-        output_type = output.type
-        if output_type == "VALUE":
-            output_type = "FLOAT"
-        
-        get_zone_output_node(output_node).state_items.new(output_type, output.name)
-        input = output_node.inputs[-2]
+        input = create_from_virtual(source=output, node=output_node, container_name="state_items")
 
     if input_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and is_virtual_socket(output):
-        #Simulation nodes call float types 'FLOAT' while other parts of the API call it 'VALUE'
-        input_type = input.type
-        if input_type == "VALUE":
-            input_type = "FLOAT"
-
-        get_zone_output_node(input_node).state_items.new(input_type, input.name)
-        output = input_node.outputs[-2]
+        output = create_from_virtual(source=input, node=input_node, container_name="state_items")
 
     if output_node.type in ('REPEAT_INPUT', 'REPEAT_OUTPUT') and is_virtual_socket(input):
-        #Simulation nodes call float types 'FLOAT' while other parts of the API call it 'VALUE'
-        output_type = output.type
-        if output_type == "VALUE":
-            output_type = "FLOAT"
-        
-        get_zone_output_node(output_node).repeat_items.new(output_type, output.name)
-        input = output_node.inputs[-2]
+        input = create_from_virtual(source=output, node=output_node, container_name="repeat_items")
 
     if input_node.type in ('REPEAT_INPUT', 'REPEAT_OUTPUT') and is_virtual_socket(output):
-        #Simulation nodes call float types 'FLOAT' while other parts of the API call it 'VALUE'
-        input_type = input.type
-        if input_type == "VALUE":
-            input_type = "FLOAT"
-
-        get_zone_output_node(input_node).repeat_items.new(input_type, input.name)
-        output = input_node.outputs[-2]
+        output = create_from_virtual(source=input, node=input_node, container_name="repeat_items")
 
     if output_node.type in ('GROUP_OUTPUT',) and is_virtual_socket(input):
         output_node.id_data.outputs.new(type(output).__name__, output.name)
