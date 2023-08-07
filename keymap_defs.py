@@ -2,7 +2,7 @@ from . import operators
 from . import interface
 from dataclasses import dataclass
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class NWKeymapEntry:
     bl_idname: str
     display_name: str
