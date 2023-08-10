@@ -2065,7 +2065,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
         operation_type = self.operation
         function_type = self.get_function_type(operation_type)
 
-        selected_nodes = list(context.selected_nodes)
+        selected_nodes = [node for node in context.selected_nodes if node.type != "FRAME"]
         if not selected_nodes:
             return {'CANCELLED'}
 
