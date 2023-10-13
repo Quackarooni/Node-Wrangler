@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from collections import namedtuple
-from nodeitems_utils import node_categories_iter
-
 
 #################
 # rl_outputs:
@@ -371,10 +369,23 @@ draw_color_sets = {
 }
 
 
-def get_nodes_from_category(category_name, context):
-    for category in node_categories_iter(context):
-        if category.name == category_name:
-            return sorted(category.items(context), key=lambda node: node.label)
+def get_texture_node_types():
+    return [
+       "ShaderNodeTexBrick",
+       "ShaderNodeTexChecker",
+       "ShaderNodeTexEnvironment",
+       "ShaderNodeTexGradient",
+       "ShaderNodeTexIES",
+       "ShaderNodeTexImage",
+       "ShaderNodeTexMagic",
+       "ShaderNodeTexMusgrave",
+       "ShaderNodeTexNoise",
+       "ShaderNodeTexPointDensity",
+       "ShaderNodeTexSky",
+       "ShaderNodeTexVoronoi",
+       "ShaderNodeTexWave",
+       "ShaderNodeTexWhiteNoise"
+    ]
 
 
 def nice_hotkey_name(punc):

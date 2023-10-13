@@ -39,7 +39,7 @@ from .utils.constants import (
     math_operations_list, 
     navs,
     nav_list,
-    get_nodes_from_category, 
+    get_texture_node_types, 
     rl_outputs
     )
 from .utils.draw import draw_callback_nodeoutline
@@ -783,15 +783,13 @@ class NWPreviewNode(Operator, NWBase):
                 return {'FINISHED'}
 
             # What follows is code for the shader editor
-            output_types = [x.nodetype for x in
-                            get_nodes_from_category('Output', context)]
             valid = False
             if active:
-                if active.rna_type.identifier not in output_types:
-                    for out in active.outputs:
-                        if is_visible_socket(out):
-                            valid = True
-                            break
+                for out in active.outputs:
+                    if is_visible_socket(out):
+                        valid = True
+                        break
+
             if valid:
                 # get material_output node
                 materialout = None  # placeholder node
@@ -2460,8 +2458,7 @@ class NWAddTextureSetup(Operator, NWBase):
     def execute(self, context):
         nodes, links = get_nodes_links(context)
 
-        texture_types = [x.nodetype for x in
-                         get_nodes_from_category('Texture', context)]
+        texture_types = get_texture_node_types()
         selected_nodes = [n for n in nodes if n.select]
 
         for node in selected_nodes:
