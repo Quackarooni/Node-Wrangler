@@ -22,8 +22,8 @@ from bpy.props import (
     StringProperty,
 )
 
-from . import operators, preferences, interface, switch_nodes_geometrymenus
-modules = (operators, preferences, interface, switch_nodes_geometrymenus)
+from . import operators, preferences, interface, node_switch_menu
+modules = (operators, preferences, interface, node_switch_menu)
 
 def register():
     # props

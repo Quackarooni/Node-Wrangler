@@ -5,7 +5,6 @@
 import bpy
 from bpy.types import Panel, Menu
 from bpy.props import StringProperty
-from nodeitems_utils import node_categories_iter, NodeItemCustom
 
 from . import operators
 
@@ -548,45 +547,35 @@ class NWAttributeMenu(bpy.types.Menu):
 class NWSwitchNodeTypeMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_switch_node_type_menu"
     bl_label = "Switch Type to..."
+    bl_options = {'SEARCH_ON_KEY_PRESS'}
+
+    def draw_search(self, context):
+        layout = self.layout
+
+        if layout.operator_context == 'EXEC_REGION_WIN':
+            layout.operator_context = 'INVOKE_REGION_WIN'
+            layout.operator("WM_OT_search_single_menu", text="Search...", icon='VIEWZOOM').menu_idname = self.bl_idname
+            layout.separator()
+
+        layout.operator_context = 'INVOKE_REGION_WIN'
 
     def draw(self, context):
         layout = self.layout
+        self.draw_search(context)
+
+        layout.operator_context = 'INVOKE_REGION_WIN'
+
         tree_type = context.space_data.tree_type
-
-
-        if tree_type != 'GeometryNodeTree':
-            categories = [c for c in node_categories_iter(context)
-                        if c.name not in ['Group', 'Script']]
-            for cat in categories:
-                idname = f"NODE_MT_fw_switch_{cat.identifier}_submenu"
-                if hasattr(bpy.types, idname):
-                    if cat.name == 'Layout':
-                        from .switch_nodes_geometrymenus import NODE_MT_NWSwitchNodes_GN_group
-                        layout.menu(NODE_MT_NWSwitchNodes_GN_group.bl_idname)
-
-                    layout.menu(idname)
-                else:
-                    layout.label(text="Unable to load altered node lists.")
-                    layout.label(text="Please re-enable Node Wrangler.")
-                    break
+        if tree_type == 'GeometryNodeTree':
+            layout.menu_contents("NODE_MT_geometry_node_switch_all")
+        elif tree_type == 'CompositorNodeTree':
+            layout.menu_contents("NODE_MT_compositor_node_switch_all")
+        elif tree_type == 'ShaderNodeTree':
+            layout.menu_contents("NODE_MT_shader_node_switch_all")
+        elif tree_type == 'TextureNodeTree':
+            layout.menu_contents("NODE_MT_texture_node_switch_all")
         else:
-            from .switch_nodes_geometrymenus import NODE_MT_NWSwitchNodes_GN
-            layout.menu_contents(NODE_MT_NWSwitchNodes_GN.bl_idname)
-
-def draw_switch_category_submenu(self, context):
-    layout = self.layout
-    if self.category.name == 'Layout':
-        for node in self.category.items(context):
-            if node.nodetype != 'NodeFrame':
-                props = layout.operator(operators.NWSwitchNodeType.bl_idname, text=node.label)
-                props.to_type = node.nodetype
-    else:
-        for node in self.category.items(context):
-            if isinstance(node, NodeItemCustom):
-                node.draw(self, layout, context)
-                continue
-            props = layout.operator(operators.NWSwitchNodeType.bl_idname, text=node.label)
-            props.to_type = node.nodetype
+            layout.label(icon='WARNING', text="Switch Nodes not available in this editor.")
 
 #
 #  APPENDAGES TO EXISTING UI

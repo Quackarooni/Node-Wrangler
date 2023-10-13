@@ -4,7 +4,6 @@
 
 import bpy
 from bpy.props import EnumProperty, BoolProperty, StringProperty, IntVectorProperty
-from nodeitems_utils import node_categories_iter
 
 from .keymap_defs import kmi_defs
 from . import interface
@@ -289,23 +288,6 @@ def register():
                     setattr(kmi.properties, prop, value)
             
             addon_keymaps.append((km, kmi))
-
-    # switch submenus
-    switch_category_menus.clear()
-    for cat in node_categories_iter(None):
-        if cat.name not in ['Group', 'Script']:
-            idname = f"NODE_MT_fw_switch_{cat.identifier}_submenu"
-            switch_category_type = type(idname, (bpy.types.Menu,), {
-                "bl_space_type": 'NODE_EDITOR',
-                "bl_label": cat.name,
-                "category": cat,
-                "poll": cat.poll,
-                "draw": interface.draw_switch_category_submenu,
-            })
-
-            switch_category_menus.append(switch_category_type)
-
-            bpy.utils.register_class(switch_category_type)
 
 
 def unregister():
