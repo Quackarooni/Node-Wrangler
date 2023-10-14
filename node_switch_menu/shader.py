@@ -311,7 +311,7 @@ class NODE_MT_NWSwitchNodes_category_shader_script(Menu):
 
 
 class NODE_MT_shader_node_switch_all(Menu):
-    bl_label = "Add"
+    bl_label = "Switch Node Type"
 
     def draw(self, _context):
         layout = self.layout

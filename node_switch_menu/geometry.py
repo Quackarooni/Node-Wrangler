@@ -606,8 +606,7 @@ class NODE_MT_NWSwitchNodes_category_GEO_VOLUME(Menu):
 
 
 class NODE_MT_geometry_node_switch_all(Menu):
-    bl_label = ""
-    bl_options = {'SEARCH_ON_KEY_PRESS'}
+    bl_label = "Switch Node Type"
 
     def draw(self, context):
         snode = context.space_data
