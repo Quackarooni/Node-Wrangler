@@ -98,6 +98,7 @@ class NODE_MT_NWSwitchNodes_category_texture_texture(Menu):
 
 class NODE_MT_texture_node_switch_all(Menu):
     bl_label = "Switch Node Type"
+    bl_options = {'SEARCH_ON_KEY_PRESS'}
 
     def draw(self, _context):
         layout = self.layout

@@ -50,7 +50,17 @@ def drawlayout(context, layout, mode='non-panel'):
     col.separator()
 
     col = layout.column(align=True)
-    col.menu(NWSwitchNodeTypeMenu.bl_idname, text="Switch Node Type")
+    #col.menu(NWSwitchNodeTypeMenu.bl_idname, text="Switch Node Type")
+    tree_type = context.space_data.tree_type
+    if tree_type == 'GeometryNodeTree':
+        col.menu("NODE_MT_geometry_node_switch_all")
+    elif tree_type == 'CompositorNodeTree':
+        col.menu("NODE_MT_compositor_node_switch_all")
+    elif tree_type == 'ShaderNodeTree':
+        col.menu("NODE_MT_shader_node_switch_all")
+    elif tree_type == 'TextureNodeTree':
+        col.menu("NODE_MT_texture_node_switch_all")
+
     col.separator()
 
     if tree_type == 'ShaderNodeTree':

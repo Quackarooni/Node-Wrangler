@@ -275,6 +275,7 @@ class NODE_MT_NWSwitchNodes_category_compositor_LAYOUT(Menu):
 
 class NODE_MT_compositor_node_switch_all(Menu):
     bl_label = "Switch Node Type"
+    bl_options = {'SEARCH_ON_KEY_PRESS'}
 
     def draw(self, context):
         layout = self.layout
