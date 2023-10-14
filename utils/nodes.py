@@ -58,7 +58,7 @@ def prev_in_list(items, key, *, wrap=False):
 
 
 def fetch_user_preferences(attr_id=None):
-    prefs = bpy.context.preferences.addons[__package__].preferences
+    prefs = bpy.context.preferences.addons["Node Wrangler"].preferences
 
     if attr_id is None:
         return prefs
