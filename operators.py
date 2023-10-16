@@ -2804,9 +2804,9 @@ class NWAddReroutes(Operator, NWBase):
     option: EnumProperty(
         name="option",
         items=[
-            ('ALL', 'to all', 'Add to all outputs'),
-            ('LOOSE', 'to loose', 'Add only to loose outputs'),
-            ('LINKED', 'to linked', 'Add only to linked outputs'),
+            ('ALL', 'to All Outputs', 'Add to all outputs'),
+            ('LOOSE', 'to Loose Outputs', 'Add only to loose outputs'),
+            ('LINKED', 'to Linked Outputs', 'Add only to linked outputs'),
         ]
     )
     
