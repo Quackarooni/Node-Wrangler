@@ -45,6 +45,7 @@ from .utils.constants import (
 from .utils.draw import draw_callback_nodeoutline
 from .utils.paths import match_files_to_socket_names, split_into_components
 from .utils.nodes import (
+    is_virtual_socket,
     n_wise_iter,
     next_in_list,
     prev_in_list,
@@ -2808,9 +2809,21 @@ class NWAddReroutes(Operator, NWBase):
         ]
     )
 
-    def execute(self, context):
+    def filter_sockets(self, sockets):
+        for socket in sockets:
+            if socket.enabled and not socket.hide and not is_virtual_socket(socket):
+                yield socket
+
+    def is_valid(self, socket):
         option = self.option
-        nodes = context.space_data.edit_tree.nodes
+        return ((option == 'ALL') or
+                (option == 'LOOSE' and not socket.is_linked) or
+                (option == 'LINKED' and socket.is_linked))
+
+    def execute(self, context):
+        tree = context.space_data.edit_tree
+        nodes = tree.nodes
+
         post_select = []  # nodes to be selected after execution
         # create reroutes and recreate links
         for node in context.selected_nodes:
@@ -2828,20 +2841,14 @@ class NWAddReroutes(Operator, NWBase):
             y_offset = -22.0
             
             reroutes_count = 0  # will be used when aligning reroutes added to hidden nodes
-            for output in node.outputs:
-                if not output.enabled:
-                    continue
-
-                valid = ((option == 'ALL') or
-                        (option == 'LOOSE' and not output.is_linked) or
-                        (option == 'LINKED' and output.is_linked))
+            for output in self.filter_sockets(node.outputs):
                 # Add reroutes only if valid, but offset location in all cases.
-                if valid:
+                if self.is_valid(output):
                     n = nodes.new('NodeReroute')
                     nodes.active = n
                     for link in output.links:
-                        connect_sockets(n.outputs[0], link.to_socket)
-                    connect_sockets(output, n.inputs[0])
+                        tree.links.new(n.outputs[0], link.to_socket)
+                    tree.links.new(output, n.inputs[0])
                     n.location = (x, y)
                     post_select.append(n)
                 reroutes_count += 1
