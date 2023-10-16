@@ -3,6 +3,7 @@
 
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import itertools
 import bpy
 
 from bpy.types import Operator, PropertyGroup
@@ -2858,6 +2859,10 @@ class NWAddReroutes(Operator, NWBase):
                     reroute.location = (x, y_loc)
                     added_reroutes.append(reroute)
                     
+        bpy.ops.node.select_all(action='DESELECT')
+        for node in added_reroutes:
+            node.select = True
+        tree.nodes.active = node
 
         return {'FINISHED'}
 
