@@ -2846,38 +2846,24 @@ class NWAddReroutes(Operator, NWBase):
                 loc = x, y
             reroutes_count = 0  # will be used when aligning reroutes added to hidden nodes
             for out_i, output in enumerate(node.outputs):
-                pass_used = False  # initial value to be analyzed if 'R_LAYERS'
-                # if node != 'R_LAYERS' - "pass_used" not needed, so set it to True
-                if node.type != 'R_LAYERS':
-                    pass_used = True
-                else:  # if 'R_LAYERS' check if output represent used render pass
-                    node_scene = node.scene
-                    node_layer = node.layer
-                    # If output - "Alpha" is analyzed - assume it's used. Not represented in passes.
-                    if output.name == 'Alpha':
-                        pass_used = True
-                    else:
-                        # check entries in global 'rl_outputs' variable
-                        for rlo in rl_outputs:
-                            if output.name in {rlo.output_name, rlo.exr_output_name}:
-                                pass_used = getattr(node_scene.view_layers[node_layer], rlo.render_pass)
-                                break
-                if pass_used:
-                    valid = ((option == 'ALL') or
-                             (option == 'LOOSE' and not output.is_linked) or
-                             (option == 'LINKED' and output.is_linked))
-                    # Add reroutes only if valid, but offset location in all cases.
-                    if valid:
-                        n = nodes.new('NodeReroute')
-                        nodes.active = n
-                        for link in output.links:
-                            connect_sockets(n.outputs[0], link.to_socket)
-                        connect_sockets(output, n.inputs[0])
-                        n.location = loc
-                        post_select.append(n)
-                    reroutes_count += 1
-                    y += y_offset
-                    loc = x, y
+                if not output.enabled:
+                    continue
+
+                valid = ((option == 'ALL') or
+                        (option == 'LOOSE' and not output.is_linked) or
+                        (option == 'LINKED' and output.is_linked))
+                # Add reroutes only if valid, but offset location in all cases.
+                if valid:
+                    n = nodes.new('NodeReroute')
+                    nodes.active = n
+                    for link in output.links:
+                        connect_sockets(n.outputs[0], link.to_socket)
+                    connect_sockets(output, n.inputs[0])
+                    n.location = loc
+                    post_select.append(n)
+                reroutes_count += 1
+                y += y_offset
+                loc = x, y
             # disselect the node so that after execution of script only newly created nodes are selected
             node.select = False
             # nicer reroutes distribution along y when node.hide
