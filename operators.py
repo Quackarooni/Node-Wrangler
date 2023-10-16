@@ -2809,43 +2809,26 @@ class NWAddReroutes(Operator, NWBase):
     )
 
     def execute(self, context):
-        tree_type = context.space_data.node_tree.type
         option = self.option
-        nodes, links = get_nodes_links(context)
-        # output valid when option is 'all' or when 'loose' output has no links
-        valid = False
+        nodes = context.space_data.edit_tree.nodes
         post_select = []  # nodes to be selected after execution
         # create reroutes and recreate links
-        for node in [n for n in nodes if n.select]:
-            if node.outputs:
-                x = node.location.x
-                y = node.location.y
-                width = node.width
-                # unhide 'REROUTE' nodes to avoid issues with location.y
-                if node.type == 'REROUTE':
-                    node.hide = False
-                # Hack needed to calculate real width
-                if node.hide:
-                    bpy.ops.node.select_all(action='DESELECT')
-                    helper = nodes.new('NodeReroute')
-                    helper.select = True
-                    node.select = True
-                    # resize node and helper to zero. Then check locations to calculate width
-                    bpy.ops.transform.resize(value=(0.0, 0.0, 0.0))
-                    width = 2.0 * (helper.location.x - node.location.x)
-                    # restore node location
-                    node.location = x, y
-                    # delete helper
-                    node.select = False
-                    # only helper is selected now
-                    bpy.ops.node.delete()
-                x = node.location.x + width + 20.0
-                if node.type != 'REROUTE':
-                    y -= 35.0
-                y_offset = -22.0
-                loc = x, y
+        for node in context.selected_nodes:
+            if len(node.outputs) <= 0:
+                continue
+            
+            # unhide 'REROUTE' nodes to avoid issues with location.y
+            if node.type == 'REROUTE':
+                node.hide = False
+
+            x = node.location.x + node.width + 20.0
+            y = node.location.y
+            if node.type != 'REROUTE':
+                y -= 35.0
+            y_offset = -22.0
+            
             reroutes_count = 0  # will be used when aligning reroutes added to hidden nodes
-            for out_i, output in enumerate(node.outputs):
+            for output in node.outputs:
                 if not output.enabled:
                     continue
 
@@ -2859,11 +2842,10 @@ class NWAddReroutes(Operator, NWBase):
                     for link in output.links:
                         connect_sockets(n.outputs[0], link.to_socket)
                     connect_sockets(output, n.inputs[0])
-                    n.location = loc
+                    n.location = (x, y)
                     post_select.append(n)
                 reroutes_count += 1
                 y += y_offset
-                loc = x, y
             # disselect the node so that after execution of script only newly created nodes are selected
             node.select = False
             # nicer reroutes distribution along y when node.hide
@@ -2871,6 +2853,7 @@ class NWAddReroutes(Operator, NWBase):
                 y_translate = reroutes_count * y_offset / 2.0 - y_offset - 35.0
                 for reroute in [r for r in nodes if r.select]:
                     reroute.location.y -= y_translate
+                    
             for node in post_select:
                 node.select = True
 
