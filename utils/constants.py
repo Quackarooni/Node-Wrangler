@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from collections import namedtuple
-from nodeitems_utils import node_categories_iter
-
 
 #################
 # rl_outputs:
@@ -40,6 +38,8 @@ rl_outputs = (
     RL_entry('use_pass_z', 'Z', 'Depth', True, True),
 )
 
+valid_sim_sockets = ('FLOAT', 'INT', 'BOOLEAN', 'VECTOR', 'ROTATION', 'STRING', 'RGBA', 'GEOMETRY')
+
 # list of blend types of "Mix" nodes in a form that can be used as 'items' for EnumProperty.
 # used list, not tuple for easy merging with other lists.
 blend_types = [
@@ -60,8 +60,8 @@ blend_types = [
     ('DIVIDE', 'Divide', 'Divide Mode'),
     ('HUE', 'Hue', 'Hue Mode'),
     ('SATURATION', 'Saturation', 'Saturation Mode'),
-    ('VALUE', 'Value', 'Value Mode'),
     ('COLOR', 'Color', 'Color Mode'),
+    ('VALUE', 'Value', 'Value Mode'),
 ]
 
 blend_types_menu_dict = {
@@ -93,8 +93,8 @@ blend_types_menu_dict = {
     "Component Modes":(
         ('HUE', 'Hue', 'Hue Mode'),
         ('SATURATION', 'Saturation', 'Saturation Mode'),
-        ('VALUE', 'Value', 'Value Mode'),
-        ('COLOR', 'Color', 'Color Mode'),),
+        ('COLOR', 'Color', 'Color Mode'),
+        ('VALUE', 'Value', 'Value Mode'),),
 }
 
 # list of operations of "Math" nodes in a form that can be used as 'items' for EnumProperty.
@@ -105,6 +105,30 @@ operations = [
     ('MULTIPLY', 'Multiply', 'Multiply Mode'),
     ('DIVIDE', 'Divide', 'Divide Mode'),
     ('MULTIPLY_ADD', 'Multiply Add', 'Multiply Add Mode'),
+    ('POWER', 'Power', 'Power Mode'),
+    ('LOGARITHM', 'Logarithm', 'Logarithm Mode'),
+    ('SQRT', 'Square Root', 'Square Root Mode'),
+    ('INVERSE_SQRT', 'Inverse Square Root', 'Inverse Square Root Mode'),
+    ('ABSOLUTE', 'Absolute', 'Absolute Mode'),
+    ('EXPONENT', 'Exponent', 'Exponent Mode'),
+    ('MINIMUM', 'Minimum', 'Minimum Mode'),
+    ('MAXIMUM', 'Maximum', 'Maximum Mode'),
+    ('LESS_THAN', 'Less Than', 'Less Than Mode'),
+    ('GREATER_THAN', 'Greater Than', 'Greater Than Mode'),
+    ('SIGN', 'Sign', 'Sign Mode'),
+    ('COMPARE', 'Compare', 'Compare Mode'),
+    ('SMOOTH_MIN', 'Smooth Minimum', 'Smooth Minimum Mode'),
+    ('SMOOTH_MAX', 'Smooth Maximum', 'Smooth Maximum Mode'),
+    ('ROUND', 'Round', 'Round Mode'),
+    ('FLOOR', 'Floor', 'Floor Mode'),
+    ('CEIL', 'Ceil', 'Ceil Mode'),
+    ('TRUNC', 'Truncate', 'Truncate Mode'),
+    ('FRACT', 'Fraction', 'Fraction Mode'),
+    ('MODULO', 'Truncated Modulo', 'Truncated Modulo Mode'),
+    ('FLOORED_MODULO', 'Floored Modulo', 'Floored Modulo Mode'),
+    ('WRAP', 'Wrap', 'Wrap Mode'),
+    ('SNAP', 'Snap', 'Snap Mode'),
+    ('PINGPONG', 'Ping-Pong', 'Ping-Pong Mode'),
     ('SINE', 'Sine', 'Sine Mode'),
     ('COSINE', 'Cosine', 'Cosine Mode'),
     ('TANGENT', 'Tangent', 'Tangent Mode'),
@@ -115,29 +139,6 @@ operations = [
     ('SINH', 'Hyperbolic Sine', 'Hyperbolic Sine Mode'),
     ('COSH', 'Hyperbolic Cosine', 'Hyperbolic Cosine Mode'),
     ('TANH', 'Hyperbolic Tangent', 'Hyperbolic Tangent Mode'),
-    ('POWER', 'Power', 'Power Mode'),
-    ('LOGARITHM', 'Logarithm', 'Logarithm Mode'),
-    ('SQRT', 'Square Root', 'Square Root Mode'),
-    ('INVERSE_SQRT', 'Inverse Square Root', 'Inverse Square Root Mode'),
-    ('EXPONENT', 'Exponent', 'Exponent Mode'),
-    ('MINIMUM', 'Minimum', 'Minimum Mode'),
-    ('MAXIMUM', 'Maximum', 'Maximum Mode'),
-    ('LESS_THAN', 'Less Than', 'Less Than Mode'),
-    ('GREATER_THAN', 'Greater Than', 'Greater Than Mode'),
-    ('SIGN', 'Sign', 'Sign Mode'),
-    ('COMPARE', 'Compare', 'Compare Mode'),
-    ('SMOOTH_MIN', 'Smooth Minimum', 'Smooth Minimum Mode'),
-    ('SMOOTH_MAX', 'Smooth Maximum', 'Smooth Maximum Mode'),
-    ('FRACT', 'Fraction', 'Fraction Mode'),
-    ('MODULO', 'Modulo', 'Modulo Mode'),
-    ('SNAP', 'Snap', 'Snap Mode'),
-    ('WRAP', 'Wrap', 'Wrap Mode'),
-    ('PINGPONG', 'Pingpong', 'Pingpong Mode'),
-    ('ABSOLUTE', 'Absolute', 'Absolute Mode'),
-    ('ROUND', 'Round', 'Round Mode'),
-    ('FLOOR', 'Floor', 'Floor Mode'),
-    ('CEIL', 'Ceil', 'Ceil Mode'),
-    ('TRUNC', 'Truncate', 'Truncate Mode'),
     ('RADIANS', 'To Radians', 'To Radians Mode'),
     ('DEGREES', 'To Degrees', 'To Degrees Mode'),
 ]
@@ -174,10 +175,11 @@ operations_menu_dict = {
         ('TRUNC', 'Truncate', 'Truncate Mode'),
         ("LayoutSeparator", "", ""),
         ('FRACT', 'Fraction', 'Fraction Mode'),
-        ('MODULO', 'Modulo', 'Modulo Mode'),
+        ('MODULO', 'Truncated Modulo', 'Truncated Modulo Mode'),
+        ('FLOORED_MODULO', 'Floored Modulo', 'Floored Modulo Mode'),
         ('WRAP', 'Wrap', 'Wrap Mode'),
         ('SNAP', 'Snap', 'Snap Mode'),
-        ('PINGPONG', 'Pingpong', 'Pingpong Mode'),),
+        ('PINGPONG', 'Ping-Pong', 'Ping-Pong Mode'),),
 
     "Trigonometric" :(
         ('SINE', 'Sine', 'Sine Mode'),
@@ -204,12 +206,12 @@ vector_operations = [
     ('MULTIPLY', 'Multiply', 'Multiply Mode'),
     ('DIVIDE', 'Divide', 'Divide Mode'),
     ('MULTIPLY_ADD', 'Multiply Add', 'Multiply Add Mode'),
-    ('DOT_PRODUCT', 'Dot Product', 'Dot Product Mode'),
     ('CROSS_PRODUCT', 'Cross Product', 'Cross Product Mode'),
     ('PROJECT', 'Project', 'Project Mode'),
     ('REFLECT', 'Reflect', 'Reflect Mode'),
     ('REFRACT', 'Refract', 'Refract Mode'),
     ('FACEFORWARD', 'Faceforward', 'Faceforward Mode'),
+    ('DOT_PRODUCT', 'Dot Product', 'Dot Product Mode'),
     ('DISTANCE', 'Distance', 'Distance Mode'),
     ('LENGTH', 'Length', 'Length Mode'),
     ('SCALE', 'Scale', 'Scale Mode'),
@@ -221,8 +223,8 @@ vector_operations = [
     ('CEIL', 'Ceil', 'Ceil Mode'),
     ('FRACTION', 'Fraction', 'Fraction Mode'),
     ('MODULO', 'Modulo', 'Modulo Mode'),
-    ('SNAP', 'Snap', 'Snap Mode'),
     ('WRAP', 'Wrap', 'Wrap Mode'),
+    ('SNAP', 'Snap', 'Snap Mode'),
     ('SINE', 'Sine', 'Sine Mode'),
     ('COSINE', 'Cosine', 'Cosine Mode'),
     ('TANGENT', 'Tangent', 'Tangent Mode'),
@@ -329,6 +331,12 @@ navs = [
     ('PREV', 'Prev', 'Previous blend type/operation'),
 ]
 
+blend_types_list = [item[0] for item in blend_types]
+bool_operations_list = [item[0] for item in boolean_operations]
+vector_operations_list  = [item[0] for item in vector_operations]
+math_operations_list = [item[0] for item in operations]
+nav_list = [nav[0] for nav in navs]
+
 draw_color_sets = {
     "red_white": (
         (1.0, 1.0, 1.0, 0.7),
@@ -363,10 +371,23 @@ draw_color_sets = {
 }
 
 
-def get_nodes_from_category(category_name, context):
-    for category in node_categories_iter(context):
-        if category.name == category_name:
-            return sorted(category.items(context), key=lambda node: node.label)
+def get_texture_node_types():
+    return [
+       "ShaderNodeTexBrick",
+       "ShaderNodeTexChecker",
+       "ShaderNodeTexEnvironment",
+       "ShaderNodeTexGradient",
+       "ShaderNodeTexIES",
+       "ShaderNodeTexImage",
+       "ShaderNodeTexMagic",
+       "ShaderNodeTexMusgrave",
+       "ShaderNodeTexNoise",
+       "ShaderNodeTexPointDensity",
+       "ShaderNodeTexSky",
+       "ShaderNodeTexVoronoi",
+       "ShaderNodeTexWave",
+       "ShaderNodeTexWhiteNoise"
+    ]
 
 
 def nice_hotkey_name(punc):

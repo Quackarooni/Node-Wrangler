@@ -2,6 +2,101 @@
 
 import bpy
 from math import hypot
+from itertools import zip_longest, filterfalse
+from .constants import valid_sim_sockets
+
+def n_wise_iter(iterable, n):
+    "s -> (s0,s1,s2,...sn-1), (sn,sn+1,sn+2,...s2n-1), (s2n,s2n+1,s2n+2,...s3n-1), ..."
+    return zip_longest(*[iter(iterable)]*n)
+
+def filter_nodes_by_type(nodes, types, tree_type=None, *, invert=False):
+    if isinstance(types, str):
+        types = (types,)
+
+    if tree_type is None:
+        tree_type = bpy.context.space_data.tree_type
+
+    if tree_type in ('ShaderNodeTree', 'GeometryNodeTree'):
+        if 'MIX_RGB' in types:
+            condition = lambda n : (n.type in types) or (n.bl_idname == 'ShaderNodeMix' and n.data_type == 'RGBA')
+        else:
+            condition = lambda n : (n.type in types)
+
+    elif tree_type in ('CompositorNodeTree', 'TextureNodeTree'):
+        condition = lambda n : (n.type in types)
+    else:
+        raise NotImplementedError(f"Function has no implemented behavior for NodeTree of type {tree_type}")
+
+    if invert:
+        return filterfalse(condition, nodes)
+    else:
+        return filter(condition, nodes)
+
+def next_in_list(items, key, *, wrap=False):
+    index = items.index(key)
+    max_index = len(items) - 1
+
+    if index == max_index:
+        if wrap is True:
+            return items[0]
+        else:
+            return items[max_index]
+    else:
+        return items[index + 1]
+
+def prev_in_list(items, key, *, wrap=False):
+    index = items.index(key)
+    max_index = len(items) - 1
+
+    if index == 0:
+        if wrap is True:
+            return items[max_index]
+        else:
+            return items[0]
+    else:
+        return items[index - 1]
+
+
+def fetch_user_preferences(attr_id=None):
+    prefs = bpy.context.preferences.addons["Node Wrangler"].preferences
+
+    if attr_id is None:
+        return prefs
+    else:
+        return getattr(prefs, attr_id)
+
+def get_zone_output_node(node):
+    valid_zone_nodes = (
+        'GeometryNodeSimulationInput',
+        'GeometryNodeSimulationOutput',
+        'GeometryNodeRepeatInput',
+        'GeometryNodeRepeatOutput'
+    )
+
+    if node.bl_idname not in valid_zone_nodes:
+        raise TypeError(f"{node} is not a valid zone node")
+
+    if node.bl_idname.endswith("Input"):
+        return node.paired_output
+    else:
+        return node
+
+def create_from_virtual(source, node, container_name):
+    #if output_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and is_virtual_socket(input):
+    #Simulation nodes call float types 'FLOAT' while other parts of the API call it 'VALUE'
+    source_type = source.type
+    if source_type == "VALUE":
+        source_type = "FLOAT"
+    
+    items = getattr(get_zone_output_node(node), container_name)
+    items.new(source_type, source.name)
+
+    #Right now, this isn't necessary, as zone inputs/outputs are tied together
+    #But it's still good form to distinguish whether what we are returning is an input/output
+    if source.is_output:
+        return node.inputs[-2]
+    else:
+        return node.outputs[-2]
 
 def connect_sockets(input, output):
     """
@@ -23,19 +118,43 @@ def connect_sockets(input, output):
     output_node = input.node
 
     if input_node.id_data is not output_node.id_data:
-        print("Sockets do not belong to the same node tree")
+        #print("Sockets do not belong to the same node tree")
         return
 
-    if type(input) == type(output) == bpy.types.NodeSocketVirtual:
-        print("Cannot connect two virtual sockets together")
+    if is_virtual_socket(sockets=(input, output)):
+        #print("Cannot connect two virtual sockets together")
         return
+    
+    if input.type != output.type and not (is_virtual_socket(input) or is_virtual_socket(output)):
+        if not ("REROUTE" in (input_node.type, output_node.type) and not input.is_linked):
+            if 'GEOMETRY' in (input.type, output.type):
+                #print("Cannot connect geometry and non-geometry socket together")
+                return 
 
-    if output_node.type == 'GROUP_OUTPUT' and type(input) == bpy.types.NodeSocketVirtual:
-        output_node.id_data.outputs.new(type(output).__name__, output.name)
+            if ('SHADER' == output.type) and ('SHADER' != input.type):
+                #print("Cannot connect shader output to not shader input")
+                return 
+
+    if output_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and is_virtual_socket(input):
+        if output.type in valid_sim_sockets:
+            input = create_from_virtual(source=output, node=output_node, container_name="state_items")
+
+    if input_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and is_virtual_socket(output):
+        if input.type in valid_sim_sockets:
+            output = create_from_virtual(source=input, node=input_node, container_name="state_items")
+
+    if output_node.type in ('REPEAT_INPUT', 'REPEAT_OUTPUT') and is_virtual_socket(input):
+        input = create_from_virtual(source=output, node=output_node, container_name="repeat_items")
+
+    if input_node.type in ('REPEAT_INPUT', 'REPEAT_OUTPUT') and is_virtual_socket(output):
+        output = create_from_virtual(source=input, node=input_node, container_name="repeat_items")
+
+    if output_node.type in ('GROUP_OUTPUT',) and is_virtual_socket(input):
+        output_node.id_data.interface.new_socket(name=output.name, socket_type=type(output).__name__, in_out='OUTPUT')
         input = output_node.inputs[-2]
 
-    if input_node.type == 'GROUP_INPUT' and type(output) == bpy.types.NodeSocketVirtual:
-        output_node.id_data.inputs.new(type(input).__name__, input.name)
+    if input_node.type in ('GROUP_INPUT',) and is_virtual_socket(output):
+        input_node.id_data.interface.new_socket(name=input.name, socket_type=type(input).__name__, in_out='INPUT')
         output = input_node.outputs[-2]
 
     return input_node.id_data.links.new(input, output)
@@ -66,31 +185,38 @@ def node_mid_pt(node, axis):
 
 
 def get_bounds(nodes):
-    weird_offset = 10
-    min_x, max_x, min_y, max_y = None, None, None, None
+    with temporary_unframe(nodes):
+        weird_offset = 10
+        min_x, max_x, min_y, max_y = None, None, None, None
 
-    for index, node in enumerate(nodes):
-        x_curr_min = node.location.x
-        x_curr_max = node.location.x + node.dimensions.x
-        y_curr_min = (node.location.y - node.dimensions.y) if not node.hide else (node.location.y - weird_offset - 0.5*node.dimensions.y)
-        y_curr_max = (node.location.y) if not node.hide else (node.location.y - weird_offset + 0.5*node.dimensions.y)
+        for index, node in enumerate(nodes):
+            x_curr_min = node.location.x
+            x_curr_max = node.location.x + node.dimensions.x
+            y_curr_min = (node.location.y - node.dimensions.y) if not node.hide else (node.location.y - weird_offset - 0.5*node.dimensions.y)
+            y_curr_max = (node.location.y) if not node.hide else (node.location.y - weird_offset + 0.5*node.dimensions.y)
 
-        if not index:
-            min_x = x_curr_min
-            max_x = x_curr_max
-            min_y = y_curr_min
-            max_y = y_curr_max
-        else:
-            min_x = min(x_curr_min, min_x)
-            max_x = max(x_curr_max, max_x)
-            min_y = min(y_curr_min, min_y)
-            max_y = max(y_curr_max, max_y)
+            if not index:
+                min_x = x_curr_min
+                max_x = x_curr_max
+                min_y = y_curr_min
+                max_y = y_curr_max
+            else:
+                min_x = min(x_curr_min, min_x)
+                max_x = max(x_curr_max, max_x)
+                min_y = min(y_curr_min, min_y)
+                max_y = max(y_curr_max, max_y)
 
     return min_x, max_x, min_y, max_y
 
 class FinishedAutolink(Exception):
     def __init__(self, *args):
         pass
+
+def is_virtual_socket(sockets):
+    if isinstance(sockets, bpy.types.NodeSocket):
+        return isinstance(sockets, bpy.types.NodeSocketVirtual)
+    else:
+        return all(isinstance(soc, bpy.types.NodeSocketVirtual) for soc in sockets)
 
 def autolink(node1, node2, links):
     available_inputs = [inp for inp in node2.inputs if inp.enabled]
@@ -102,8 +228,10 @@ def autolink(node1, node2, links):
         for outp in outputs:
             for inp in inputs:
                 if condition(inp, outp):
-                    links.new(outp, inp)
-                    raise FinishedAutolink
+                    new_link = connect_sockets(outp, inp)
+
+                    if new_link is not None:
+                        raise FinishedAutolink
 
 
     autolink_iter(visible_inputs, visible_outputs, 
@@ -133,7 +261,7 @@ def autolink(node1, node2, links):
     autolink_iter(available_inputs, available_outputs, 
         condition=(lambda inp, outp: not inp.is_linked and inp.type == outp.type))
     autolink_iter(visible_inputs, visible_outputs)
-    
+
     print("Could not make a link from " + node1.name + " to " + node2.name)
 
 
@@ -237,25 +365,18 @@ def get_internal_socket(socket):
     # get the internal socket from a socket inside or outside the group
     node = socket.node
     if node.type == 'GROUP_OUTPUT':
-        source_iterator = node.inputs
-        iterator = node.id_data.outputs
+        iterator = node.id_data.interface.items_tree
     elif node.type == 'GROUP_INPUT':
-        source_iterator = node.outputs
-        iterator = node.id_data.inputs
+        iterator = node.id_data.interface.items_tree
     elif hasattr(node, "node_tree"):
-        if socket.is_output:
-            source_iterator = node.outputs
-            iterator = node.node_tree.outputs
-        else:
-            source_iterator = node.inputs
-            iterator = node.node_tree.inputs
+        iterator = node.node_tree.interface.items_tree
     else:
         return None
 
-    for i, s in enumerate(source_iterator):
-        if s == socket:
-            break
-    return iterator[i]
+    for s in iterator:
+        if s.identifier == socket.identifier:
+            return s
+    return iterator[0]
 
 
 def is_viewer_link(link, output_node):

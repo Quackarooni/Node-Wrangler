@@ -1,5 +1,9 @@
+# SPDX-FileCopyrightText: 2019-2022 Blender Foundation
+#
+
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import itertools
 import bpy
 
 from bpy.types import Operator, PropertyGroup
@@ -18,7 +22,7 @@ from mathutils import Vector
 from os import path
 from glob import glob
 from copy import copy
-from itertools import chain, islice
+from itertools import chain, islice, zip_longest
 
 from .interface import NWConnectionListInputs, NWConnectionListOutputs
 
@@ -29,16 +33,46 @@ from .utils.constants import (
     boolean_operations,
     shader_operations,
     string_operations,
-    operations, 
-    navs, 
-    get_nodes_from_category, 
+    operations,
+    blend_types_list,
+    vector_operations_list,
+    bool_operations_list,
+    math_operations_list, 
+    navs,
+    nav_list,
+    get_texture_node_types, 
     rl_outputs
     )
 from .utils.draw import draw_callback_nodeoutline
 from .utils.paths import match_files_to_socket_names, split_into_components
-from .utils.nodes import (node_mid_pt, get_bounds, autolink, node_at_pos, get_active_tree, get_nodes_links, is_viewer_socket,
-                          is_viewer_link, get_group_output_node, get_output_location, force_update, get_internal_socket,
-                          fw_check, NWBase, FinishedAutolink, get_first_enabled_output, is_visible_socket, temporary_unframe, viewer_socket_name)
+from .utils.nodes import (
+    is_virtual_socket,
+    n_wise_iter,
+    next_in_list,
+    prev_in_list,
+    filter_nodes_by_type,
+    node_mid_pt, 
+    get_bounds, 
+    fetch_user_preferences, 
+    autolink, 
+    node_at_pos, 
+    get_active_tree, 
+    get_nodes_links, 
+    connect_sockets,
+    is_viewer_socket,
+    is_viewer_link, 
+    get_group_output_node, 
+    get_output_location, 
+    force_update, 
+    get_internal_socket,
+    fw_check, 
+    NWBase, 
+    FinishedAutolink, 
+    get_first_enabled_output, 
+    is_visible_socket, 
+    temporary_unframe, 
+    viewer_socket_name
+    )
 
 class NodeSetting(bpy.types.PropertyGroup):
     value: StringProperty(
@@ -389,13 +423,13 @@ class NWSwapLinks(Operator, NWBase):
 
                 for connection in n1_outputs:
                     try:
-                        links.new(n2.outputs[connection[0]], connection[1])
+                        connect_sockets(n2.outputs[connection[0]], connection[1])
                     except:
                         self.report({'WARNING'},
                                     "Some connections have been lost due to differing numbers of output sockets")
                 for connection in n2_outputs:
                     try:
-                        links.new(n1.outputs[connection[0]], connection[1])
+                        connect_sockets(n1.outputs[connection[0]], connection[1])
                     except:
                         self.report({'WARNING'},
                                     "Some connections have been lost due to differing numbers of output sockets")
@@ -433,8 +467,8 @@ class NWSwapLinks(Operator, NWBase):
                         i1t = pair[0].links[0].to_socket
                         i2f = pair[1].links[0].from_socket
                         i2t = pair[1].links[0].to_socket
-                        links.new(i1f, i2t)
-                        links.new(i2f, i1t)
+                        connect_sockets(i1f, i2t)
+                        connect_sockets(i2f, i1t)
                     if t[1] == 1:
                         if len(types) == 1:
                             fs = t[0].links[0].from_socket
@@ -445,14 +479,14 @@ class NWSwapLinks(Operator, NWBase):
                             i += 1
                             while n1.inputs[i].is_linked:
                                 i += 1
-                            links.new(fs, n1.inputs[i])
+                            connect_sockets(fs, n1.inputs[i])
                         elif len(types) == 2:
                             i1f = types[0][0].links[0].from_socket
                             i1t = types[0][0].links[0].to_socket
                             i2f = types[1][0].links[0].from_socket
                             i2t = types[1][0].links[0].to_socket
-                            links.new(i1f, i2t)
-                            links.new(i2f, i1t)
+                            connect_sockets(i1f, i2t)
+                            connect_sockets(i2f, i1t)
 
                 else:
                     self.report({'WARNING'}, "This node has no input connections to swap!")
@@ -525,14 +559,19 @@ class NWPreviewNode(Operator, NWBase):
                     return True
         return False
 
+    @classmethod
+    def get_output_sockets(cls, node_tree):
+        return [item for item in node_tree.interface.items_tree if item.item_type == 'SOCKET' and item.in_out in {'OUTPUT', 'BOTH'}]
+
     def ensure_viewer_socket(self, node, socket_type, connect_socket=None):
         # check if a viewer output already exists in a node group otherwise create
         if hasattr(node, "node_tree"):
-            index = None
-            if len(node.node_tree.outputs):
+            viewer_socket = None
+            output_sockets = self.get_output_sockets(node.node_tree)
+            if len(output_sockets):
                 free_socket = None
-                for i, socket in enumerate(node.node_tree.outputs):
-                    if is_viewer_socket(socket) and is_visible_socket(node.outputs[i]) and socket.type == socket_type:
+                for socket in output_sockets:
+                    if is_viewer_socket(socket) and socket.socket_type == socket_type:
                         # if viewer output is already used but leads to the same socket we can still use it
                         is_used = self.is_socket_used_other_mats(socket)
                         if is_used:
@@ -543,19 +582,18 @@ class NWPreviewNode(Operator, NWBase):
                             links = groupout_input.links
                             if connect_socket not in [link.from_socket for link in links]:
                                 continue
-                            index = i
+                            viewer_socket = socket
                             break
                         if not free_socket:
-                            free_socket = i
-                if not index and free_socket:
-                    index = free_socket
+                            free_socket = socket
+                if not viewer_socket and free_socket:
+                    viewer_socket = free_socket
 
-            if not index:
+            if not viewer_socket:
                 # create viewer socket
-                node.node_tree.outputs.new(socket_type, viewer_socket_name)
-                index = len(node.node_tree.outputs) - 1
-                node.node_tree.outputs[index].NWViewerSocket = True
-            return index
+                viewer_socket = node.node_tree.interface.new_socket(viewer_socket_name, in_out={'OUTPUT'}, socket_type=socket_type)
+                viewer_socket.NWViewerSocket = True
+            return viewer_socket
 
     def init_shader_variables(self, space, shader_type):
         if shader_type == 'OBJECT':
@@ -595,15 +633,14 @@ class NWPreviewNode(Operator, NWBase):
         for i, input_socket in enumerate(node.inputs):
             if index and i != index:
                 continue
-            if len(input_socket.links):
+            if input_socket.is_linked:
                 link = input_socket.links[0]
                 next_node = link.from_node
                 external_socket = link.from_socket
                 if hasattr(next_node, "node_tree"):
-                    for socket_index, s in enumerate(next_node.outputs):
-                        if s == external_socket:
+                    for socket_index, socket in enumerate(next_node.node_tree.interface.items_tree):
+                        if socket.identifier == external_socket.identifier:
                             break
-                    socket = next_node.node_tree.outputs[socket_index]
                     if is_viewer_socket(socket) and socket not in sockets:
                         sockets.append(socket)
                         # continue search inside of node group but restrict socket to where we came from
@@ -617,10 +654,16 @@ class NWPreviewNode(Operator, NWBase):
             if hasattr(node, "node_tree"):
                 if node.node_tree is None:
                     continue
-                for socket in node.node_tree.outputs:
+                for socket in cls.get_output_sockets(node.node_tree):
                     if is_viewer_socket(socket) and (socket not in sockets):
                         sockets.append(socket)
                 cls.scan_nodes(node.node_tree, sockets)
+
+    @classmethod
+    def remove_socket(cls, tree, socket):
+        interface = tree.interface
+        interface.remove(socket)
+        interface.active_index = min(interface.active_index, len(interface.items_tree) - 1)
 
     def link_leads_to_used_socket(self, link):
         # return True if link leads to a socket that is already used in this material
@@ -723,27 +766,27 @@ class NWPreviewNode(Operator, NWBase):
                     make_links.append((active.outputs[out_i], geometryoutput.inputs[geometryoutindex]))
                     output_socket = geometryoutput.inputs[geometryoutindex]
                     for li_from, li_to in make_links:
-                        base_node_tree.links.new(li_from, li_to)
+                        connect_sockets(li_from, li_to)
                     tree = base_node_tree
                     link_end = output_socket
                     while tree.nodes.active != active:
                         node = tree.nodes.active
-                        index = self.ensure_viewer_socket(
+                        viewer_socket = self.ensure_viewer_socket(
                             node, 'NodeSocketGeometry', connect_socket=active.outputs[out_i] if node.node_tree.nodes.active == active else None)
-                        link_start = node.outputs[index]
-                        node_socket = node.node_tree.outputs[index]
+                        link_start = node.outputs[viewer_socket_name]
+                        node_socket = viewer_socket
                         if node_socket in delete_sockets:
                             delete_sockets.remove(node_socket)
-                        tree.links.new(link_start, link_end)
+                        connect_sockets(link_start, link_end)
                         # Iterate
-                        link_end = self.ensure_group_output(node.node_tree).inputs[index]
+                        link_end = self.ensure_group_output(node.node_tree).inputs[viewer_socket_name]
                         tree = tree.nodes.active.node_tree
-                    tree.links.new(active.outputs[out_i], link_end)
+                    connect_sockets(active.outputs[out_i], link_end)
 
                 # Delete sockets
                 for socket in delete_sockets:
                     tree = socket.id_data
-                    tree.outputs.remove(socket)
+                    self.remove_socket(tree, socket)
 
                 nodes.active = active
                 active.select = True
@@ -751,15 +794,12 @@ class NWPreviewNode(Operator, NWBase):
                 return {'FINISHED'}
 
             # What follows is code for the shader editor
-            output_types = [x.nodetype for x in
-                            get_nodes_from_category('Output', context)]
             valid = False
             if active:
-                if active.rna_type.identifier not in output_types:
-                    for out in active.outputs:
-                        if is_visible_socket(out):
-                            valid = True
-                            break
+                for out in active.outputs:
+                    if is_visible_socket(out):
+                        valid = True
+                        break
             if valid:
                 # get material_output node
                 materialout = None  # placeholder node
@@ -797,30 +837,30 @@ class NWPreviewNode(Operator, NWBase):
                     make_links.append((active.outputs[out_i], materialout.inputs[materialout_index]))
                     output_socket = materialout.inputs[materialout_index]
                     for li_from, li_to in make_links:
-                        base_node_tree.links.new(li_from, li_to)
+                        connect_sockets(li_from, li_to)
 
                     # Create links through node groups until we reach the active node
                     tree = base_node_tree
                     link_end = output_socket
                     while tree.nodes.active != active:
                         node = tree.nodes.active
-                        index = self.ensure_viewer_socket(
+                        viewer_socket = self.ensure_viewer_socket(
                             node, socket_type, connect_socket=active.outputs[out_i] if node.node_tree.nodes.active == active else None)
-                        link_start = node.outputs[index]
-                        node_socket = node.node_tree.outputs[index]
+                        link_start = node.outputs[viewer_socket_name]
+                        node_socket = viewer_socket
                         if node_socket in delete_sockets:
                             delete_sockets.remove(node_socket)
-                        tree.links.new(link_start, link_end)
+                        connect_sockets(link_start, link_end)
                         # Iterate
-                        link_end = self.ensure_group_output(node.node_tree).inputs[index]
+                        link_end = self.ensure_group_output(node.node_tree).inputs[viewer_socket_name]
                         tree = tree.nodes.active.node_tree
-                    tree.links.new(active.outputs[out_i], link_end)
+                    connect_sockets(active.outputs[out_i], link_end)
 
                 # Delete sockets
                 for socket in delete_sockets:
                     if not self.is_socket_used_other_mats(socket):
                         tree = socket.id_data
-                        tree.outputs.remove(socket)
+                        self.remove_socket(tree, socket)
 
                 nodes.active = active
                 active.select = True
@@ -1118,31 +1158,31 @@ class NWSwitchNodeType(Operator, NWBase):
                     if node.inputs[src_i].links and not new_node.inputs[dst_i].links:
                         in_src_link = node.inputs[src_i].links[0]
                         in_dst_socket = new_node.inputs[dst_i]
-                        links.new(in_src_link.from_socket, in_dst_socket)
+                        connect_sockets(in_src_link.from_socket, in_dst_socket)
                         links.remove(in_src_link)
                 # OUTPUTS: Base on matches in proper order.
                 for (src_i, src_dval), (dst_i, dst_dval) in matches['OUTPUTS'][tp]:
                     for out_src_link in node.outputs[src_i].links:
                         out_dst_socket = new_node.outputs[dst_i]
-                        links.new(out_dst_socket, out_src_link.to_socket)
+                        connect_sockets(out_dst_socket, out_src_link.to_socket)
             # relink rest inputs if possible, no criteria
             for src_inp in node.inputs:
                 for dst_inp in new_node.inputs:
                     if src_inp.links and not dst_inp.links:
                         src_link = src_inp.links[0]
-                        links.new(src_link.from_socket, dst_inp)
+                        connect_sockets(src_link.from_socket, dst_inp)
                         links.remove(src_link)
             # relink rest outputs if possible, base on node kind if any left.
             for src_o in node.outputs:
                 for out_src_link in src_o.links:
                     for dst_o in new_node.outputs:
                         if src_o.type == dst_o.type:
-                            links.new(dst_o, out_src_link.to_socket)
+                            connect_sockets(dst_o, out_src_link.to_socket)
             # relink rest outputs no criteria if any left. Link all from first output.
             for src_o in node.outputs:
                 for out_src_link in src_o.links:
                     if new_node.outputs:
-                        links.new(new_node.outputs[0], out_src_link.to_socket)
+                        connect_sockets(new_node.outputs[0], out_src_link.to_socket)
             nodes.remove(node)
 
         force_update(context)
@@ -1233,16 +1273,16 @@ class NWMergeNodes(Operator, NWBase):
             # outputs to the multi input socket.
             if i < len(socket_indices) - 1:
                 ind = socket_indices[i]
-                links.new(node.outputs[0], new_node.inputs[ind])
+                connect_sockets(node.outputs[0], new_node.inputs[ind])
             else:
                 outputs_for_multi_input.insert(0, node.outputs[0])
         if outputs_for_multi_input != []:
             ind = socket_indices[-1]
             for output in outputs_for_multi_input:
-                links.new(output, new_node.inputs[ind])
+                connect_sockets(output, new_node.inputs[ind])
         if prev_links != []:
             for link in prev_links:
-                links.new(new_node.outputs[0], link.to_node.inputs[0])
+                connect_sockets(new_node.outputs[0], link.to_node.inputs[0])
         return new_node
 
     def execute(self, context):
@@ -1406,7 +1446,6 @@ class NWMergeNodes(Operator, NWBase):
                     if tree_type == 'COMPOSITING':
                         first = 1
                         second = 2
-                    add.width_hidden = 100.0
                 elif nodes_list == selected_math:
                     add_type = node_type + 'Math'
                     add = nodes.new(add_type)
@@ -1416,7 +1455,6 @@ class NWMergeNodes(Operator, NWBase):
                         loc_y = loc_y - 50
                     first = 0
                     second = 1
-                    add.width_hidden = 100.0
                 elif nodes_list == selected_shader:
                     if mode == 'MIX':
                         add_type = node_type + 'MixShader'
@@ -1426,7 +1464,6 @@ class NWMergeNodes(Operator, NWBase):
                             loc_y = loc_y - 50
                         first = 1
                         second = 2
-                        add.width_hidden = 100.0
                     elif mode == 'ADD':
                         add_type = node_type + 'AddShader'
                         add = nodes.new(add_type)
@@ -1435,7 +1472,6 @@ class NWMergeNodes(Operator, NWBase):
                             loc_y = loc_y - 50
                         first = 0
                         second = 1
-                        add.width_hidden = 100.0
                 elif nodes_list == selected_geometry:
                     if mode in ('JOIN', 'MIX'):
                         add_type = node_type + 'JoinGeometry'
@@ -1462,7 +1498,6 @@ class NWMergeNodes(Operator, NWBase):
                         loc_y = loc_y - 50
                     first = 0
                     second = 1
-                    add.width_hidden = 100.0
                 elif nodes_list == selected_z:
                     add = nodes.new('CompositorNodeZcombine')
                     add.show_preview = False
@@ -1471,7 +1506,6 @@ class NWMergeNodes(Operator, NWBase):
                         loc_y = loc_y - 50
                     first = 0
                     second = 2
-                    add.width_hidden = 100.0
                 elif nodes_list == selected_alphaover:
                     add = nodes.new('CompositorNodeAlphaOver')
                     add.show_preview = False
@@ -1480,7 +1514,6 @@ class NWMergeNodes(Operator, NWBase):
                         loc_y = loc_y - 50
                     first = 1
                     second = 2
-                    add.width_hidden = 100.0
                 add.location = loc_x, loc_y
                 loc_y += offset_y
                 add.select = True
@@ -1509,19 +1542,19 @@ class NWMergeNodes(Operator, NWBase):
                         # Prevent cyclic dependencies when nodes to be merged are linked to one another.
                         # Link only if "to_node" index not in invalid indexes list.
                         if not self.link_creates_cycle(ss_link, invalid_nodes):
-                            links.new(get_first_enabled_output(last_add), ss_link.to_socket)
+                            connect_sockets(get_first_enabled_output(last_add), ss_link.to_socket)
             # add links from last_add to all links 'to_socket' of out links of first selected.
             for fs_link in first_selected_output.links:
                 # Link only if "to_node" index not in invalid indexes list.
                 if not self.link_creates_cycle(fs_link, invalid_nodes):
-                    links.new(get_first_enabled_output(last_add), fs_link.to_socket)
+                    connect_sockets(get_first_enabled_output(last_add), fs_link.to_socket)
             # add link from "first" selected and "first" add node
             node_to = nodes[count_after - 1]
-            links.new(first_selected_output, node_to.inputs[first])
+            connect_sockets(first_selected_output, node_to.inputs[first])
             if node_to.type == 'ZCOMBINE':
                 for fs_out in first_selected.outputs:
                     if fs_out != first_selected_output and fs_out.name in ('Z', 'Depth'):
-                        links.new(fs_out, node_to.inputs[1])
+                        connect_sockets(fs_out, node_to.inputs[1])
                         break
             # add links between added ADD nodes and between selected and ADD nodes
             for i in range(count_adds):
@@ -1530,21 +1563,21 @@ class NWMergeNodes(Operator, NWBase):
                     node_to = nodes[index - 1]
                     node_to_input_i = first
                     node_to_z_i = 1  # if z combine - link z to first z input
-                    links.new(get_first_enabled_output(node_from), node_to.inputs[node_to_input_i])
+                    connect_sockets(get_first_enabled_output(node_from), node_to.inputs[node_to_input_i])
                     if node_to.type == 'ZCOMBINE':
                         for from_out in node_from.outputs:
                             if from_out != get_first_enabled_output(node_from) and from_out.name in ('Z', 'Depth'):
-                                links.new(from_out, node_to.inputs[node_to_z_i])
+                                connect_sockets(from_out, node_to.inputs[node_to_z_i])
                 if len(nodes_list) > 1:
                     node_from = nodes[nodes_list[i + 1][0]]
                     node_to = nodes[index]
                     node_to_input_i = second
                     node_to_z_i = 3  # if z combine - link z to second z input
-                    links.new(get_first_enabled_output(node_from), node_to.inputs[node_to_input_i])
+                    connect_sockets(get_first_enabled_output(node_from), node_to.inputs[node_to_input_i])
                     if node_to.type == 'ZCOMBINE':
                         for from_out in node_from.outputs:
                             if from_out != get_first_enabled_output(node_from) and from_out.name in ('Z', 'Depth'):
-                                links.new(from_out, node_to.inputs[node_to_z_i])
+                                connect_sockets(from_out, node_to.inputs[node_to_z_i])
                 index -= 1
             # set "last" of added nodes as active
             nodes.active = last_add
@@ -1559,7 +1592,7 @@ class NWMergeNodesRefactored(Operator, NWBase):
     bl_description = "Merge Selected Nodes"
     bl_options = {'REGISTER', 'UNDO'}
 
-    mode: EnumProperty(
+    operation: EnumProperty(
         name="mode",
         description="All possible blend types, boolean operations and math operations",
         default='NONE',
@@ -1593,13 +1626,12 @@ class NWMergeNodesRefactored(Operator, NWBase):
 
     @staticmethod
     def get_function_type(operation_name):
-
-
+        prefs = fetch_user_preferences()
         unary_ops = [
             #Boolean Ops
             'NOT',
             #Vector Ops
-            'NORMALIZE','LENGTH','ABSOLUTE','FRACTION','FLOOR','CEIL','SINE','COSINE','TANGENT',
+            'NORMALIZE','LENGTH','ABSOLUTE','FRACTION', 'SCALE', 'FLOOR','CEIL','SINE','COSINE','TANGENT',
             #Math Ops
             'SQRT','INVERSE_SQRT','ABSOLUTE','EXPONENT','SIGN','ROUND','TRUNC','FRACT',
             'ARCSINE','ARCCOSINE','ARCTANGENT','SINH','COSH','TANH','RADIANS','DEGREES',
@@ -1620,12 +1652,56 @@ class NWMergeNodesRefactored(Operator, NWBase):
             'INTERSECT',
         ]
 
+
+        binary_merge_ops = [
+            #Vector Ops
+            'DOT_PRODUCT', 'DISTANCE'
+        ]
+
+        ternary_ops = [
+            #Math Ops
+            'SMOOTH_MIN', 'SMOOTH_MAX', 'COMPARE', 
+            #Vector Ops
+            'FACEFORWARD',
+            #Math & Vector Ops
+            'MULTIPLY_ADD', 'WRAP',            
+            #String Ops
+            'REPLACE',
+        ]
+
+        temp_type = 'TERNARY' if operation_name in ternary_ops else 'BINARY'
+
         if operation_name in unary_ops:
             return 'UNARY'
         elif operation_name in batch_ops:
             return 'BATCH'
-        else:
+
+        elif operation_name in batch_ops:
+            return 'BATCH'
+
+        if temp_type == 'TERNARY':
+            merge_mode = prefs.merge_ternary_mode
+
+            if merge_mode == 'AUTO':
+                return 'TERNARY_MERGE'
+            elif merge_mode == 'CHAIN':
+                return 'TERNARY'
+            elif merge_mode == 'GROUP':
+                return 'TERNARY_MERGE' 
+
+
+        merge_mode = prefs.merge_binary_mode
+
+        if merge_mode == 'AUTO':
+            if operation_name in binary_merge_ops:
+                return 'BINARY_MERGE'
+            else:
+                return 'BINARY'
+
+        elif merge_mode == 'CHAIN':
             return 'BINARY'
+        elif merge_mode == 'GROUP':
+            return 'BINARY_MERGE'
 
 
     @staticmethod
@@ -1647,16 +1723,13 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 raise IndexError
                 
 
-    def arrange_nodes(self, context, nodes, align_point=(0, 0)):
+    def arrange_nodes(self, nodes, align_point=(0, 0)):
         current_pos = 0
         margin = 15
         x_spacing_offset = 120
 
-        target_x, target_y = align_point
-
         #TODO - Implement Sizes between different nodes, in both cases of vertical and horizontal alignment
-
-        if self.mode == 'STRING_TO_CURVES':
+        if self.operation == 'STRING_TO_CURVES':
             offset_size = 50
         else:
             offset_size = 30
@@ -1665,42 +1738,155 @@ class NWMergeNodesRefactored(Operator, NWBase):
             node.location.y = current_pos
             current_pos -= offset_size + margin
 
+        merge_position = fetch_user_preferences("merge_position")
         min_x, max_x, min_y, max_y = get_bounds(nodes)
-        mid_x, mid_y = (0.5 * (min_x + max_x), 0.5 * (min_y + max_y))
+        target_x, target_y = align_point
 
-        align_offset_x, align_offset_y = target_x - mid_x, target_y - mid_y 
+        align_offset_x = target_x - max_x + x_spacing_offset
+        if merge_position == 'TOP':
+            align_offset_y = target_y - max_y - (0.5 * offset_size)
+        elif merge_position == 'MIDDLE':
+            align_offset_y = target_y - 0.5 * (min_y + max_y)
+        elif merge_position == 'BOTTOM':
+            align_offset_y = target_y - min_y + (0.5 * offset_size)
 
         for node in nodes:
-            node.location.x = align_offset_x + x_spacing_offset
+            node.location.x = align_offset_x
             node.location.y += align_offset_y
 
-    def execute(self, context):
-        settings = context.preferences.addons[__package__].preferences
-        merge_hide = settings.merge_hide
-        merge_position = settings.merge_position  # 'center' or 'bottom'
-        prefer_first_socket = True #Toggles whether to chain nodes by their first or second socket
-
-        tree_type = context.space_data.node_tree.type
+    def group_merge(self, context, selected_nodes, data, group_size):
         nodes, links = get_nodes_links(context)
+        operation_type = self.operation
 
-        #TODO - Fetch operation type and subtype function
-        operation_type = self.mode
-        function_type = self.get_function_type(operation_type)
+        new_nodes = []
+        for group in n_wise_iter(selected_nodes, n=group_size):
+            new_node = nodes.new(data.node_to_add)
+            new_node.hide = True
+            new_node.select = True
+
+            if data.subtype_name is not None:
+                setattr(new_node, data.subtype_name, operation_type)
+
+            if data.mix_type is not None:
+                new_node.data_type = data.mix_type
+
+            for index, node in enumerate(group):
+                if node is not None:
+                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=data.preferred_input_type)
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=data.socket_data_type, target_index=index)
+                    connect_sockets(from_socket, to_socket)
+
+            new_nodes.append(new_node)
+
+        context.space_data.edit_tree.nodes.active = new_node
+        return new_nodes
+
+    def chain_merge(self, context, selected_nodes, data, group_size):
+        nodes, links = get_nodes_links(context)
+        operation_type = self.operation
+        max_index = group_size - 1
+
+        if len(selected_nodes) <= group_size:
+            new_node = nodes.new(data.node_to_add)
+            new_node.hide = True
+            new_node.select = True  
+
+            if data.subtype_name is not None:
+                setattr(new_node, data.subtype_name, operation_type)
+
+            if data.mix_type is not None:
+                new_node.data_type = data.mix_type
+
+            for index, node in enumerate(selected_nodes):
+                from_socket = self.get_valid_socket(node, mode='Outputs', data_types=data.preferred_input_type)
+                to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=data.socket_data_type, target_index=index)
+                connect_sockets(from_socket, to_socket)
+
+            context.space_data.edit_tree.nodes.active = new_node
+            return [new_node, ]
+
+        new_nodes = []
+        if data.prefer_first_socket:
+            first_node = selected_nodes.pop(0)
+        else:
+            first_node = selected_nodes.pop(max_index)
+
+        prev_socket = None
+        for group in n_wise_iter(selected_nodes, n=max_index):
+            new_node = nodes.new(data.node_to_add)
+            new_node.hide = True
+            new_node.select = True
+
+            if data.subtype_name is not None:
+                setattr(new_node, data.subtype_name, operation_type)
+
+            if data.mix_type is not None:
+                new_node.data_type = data.mix_type
+
+            for index, node in enumerate(group, start=data.prefer_first_socket):
+                if node is not None:
+                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=data.preferred_input_type)
+                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=data.socket_data_type, target_index=index)
+                    connect_sockets(from_socket, to_socket)
+
+            chain_index = 0 if data.prefer_first_socket else max_index
+
+            if prev_socket is not None:
+                from_socket = prev_socket
+                to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=data.socket_data_type, target_index=chain_index)
+                connect_sockets(from_socket, to_socket)
+            else:
+                from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=data.preferred_input_type)
+                to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=data.socket_data_type, target_index=chain_index)
+                connect_sockets(from_socket, to_socket)
+
+            prev_socket = self.get_valid_socket(new_node, mode='Outputs', data_types=data.preferred_input_type)
+            new_nodes.append(new_node)
+
+        context.space_data.edit_tree.nodes.active = new_node
+        return new_nodes
+
+    def batch_merge(self, context, selected_nodes, data):
+        nodes, links = get_nodes_links(context)
+        operation_type = self.operation
+
+        new_node = nodes.new(data.node_to_add)
+        new_node.hide = True
+        new_node.select = True
+
+        if data.subtype_name is not None:
+            setattr(new_node, data.subtype_name, operation_type)
+
+        batch_socket = self.get_valid_socket(new_node, mode='Inputs', 
+            data_types=data.socket_data_type, target_index=data.batch_socket_index)
+        
+        if not data.isolate_first_socket:
+            for node in reversed(selected_nodes):
+                from_socket = self.get_valid_socket(node, mode='Outputs', data_types=data.preferred_input_type)
+                connect_sockets(from_socket, batch_socket)
+        else:
+            first_node = selected_nodes.pop(0)
+
+            for node in reversed(selected_nodes):
+                from_socket = self.get_valid_socket(node, mode='Outputs', data_types=data.preferred_input_type)
+                connect_sockets(from_socket, batch_socket)
+
+            first_to_socket = self.get_valid_socket(new_node, mode='Inputs', 
+                data_types=data.socket_data_type, target_index=data.first_socket_index)
+            first_from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=data.preferred_input_type)
+
+            connect_sockets(first_from_socket, first_to_socket)
+
+        context.space_data.edit_tree.nodes.active = new_node
+        return [new_node, ]
+
+    def setup_function_data(self, context, function_type, operation_type):
+        tree_type = context.space_data.node_tree.type
         merge_type = self.merge_type
-
-        selected_nodes = list(context.selected_nodes)
-        if not selected_nodes:
-            return {'CANCELLED'}
-
-        for node in nodes:
-            node.select = False
-
-        min_x, max_x, min_y, max_y = get_bounds(selected_nodes)
-        align_point = (max_x, 0.5 * (min_y + max_y))
-        selected_nodes.sort(key=lambda n: n.location.y - (n.dimensions.y / 2), reverse=True)
 
         mix_type = None
         isolate_first_socket = False
+        first_socket_index = None
         preferred_input_type = [
             'CUSTOM', 'VALUE', 'INT', 'BOOLEAN', 'VECTOR', 
             'STRING', 'RGBA', 'SHADER', 'OBJECT', 'IMAGE', 
@@ -1708,8 +1894,6 @@ class NWMergeNodesRefactored(Operator, NWBase):
             'COLLECTION', 'TEXTURE', 'MATERIAL'
             ]
 
-        # TODO - Add socket_data_type for input filtering
-        
         if merge_type == 'VECTOR':
             node_to_add = 'ShaderNodeVectorMath'
             subtype_name = "operation"
@@ -1768,8 +1952,8 @@ class NWMergeNodesRefactored(Operator, NWBase):
                 }
 
             node_to_add = lookup_dict[operation_type]
-            socket_data_type = ('GEOMETRY')
-            preferred_input_type = ['GEOMETRY']
+            socket_data_type = ('GEOMETRY', )
+            preferred_input_type = ('GEOMETRY', )
             subtype_name = None
 
             if node_to_add == 'GeometryNodeMeshBoolean':
@@ -1804,93 +1988,132 @@ class NWMergeNodesRefactored(Operator, NWBase):
             socket_data_type = ('RGBA', )
 
 
-        new_nodes = []
+        prefs = fetch_user_preferences()
+        prefer_first_socket_binary = prefs.prefer_first_socket_binary
+        prefer_first_socket_ternary = prefs.prefer_first_socket_ternary
+
+        prefer_first_socket = None
+        if function_type in ('BINARY', 'BINARY_MERGE'):
+            prefer_first_socket = prefer_first_socket_binary
+        elif function_type in ('TERNARY', 'TERNARY_MERGE'):
+            prefer_first_socket = prefer_first_socket_ternary
+
+        from typing import NamedTuple
+
+        if function_type == 'BATCH':
+            class NodeData_Batch(NamedTuple):
+                node_to_add : str
+                subtype_name : str
+                operation_type : str
+                preferred_input_type : tuple 
+                isolate_first_socket : bool
+                socket_data_type : tuple
+                first_socket_index : int
+                batch_socket_index : int
+
+            data = NodeData_Batch(
+                node_to_add=node_to_add, 
+                subtype_name=subtype_name, 
+                operation_type=operation_type,
+                first_socket_index=first_socket_index,
+                batch_socket_index=batch_socket_index,
+                preferred_input_type=preferred_input_type,
+                isolate_first_socket=isolate_first_socket,
+                socket_data_type=socket_data_type
+                )
+
+        elif function_type in ('UNARY', 'BINARY_MERGE', 'TERNARY_MERGE'):
+            class NodeData_Merge(NamedTuple):
+                node_to_add : str
+                subtype_name : str
+                mix_type : str
+                operation_type : str
+                socket_data_type : tuple
+                preferred_input_type : tuple
+
+            data = NodeData_Merge(
+                node_to_add=node_to_add, 
+                subtype_name=subtype_name, 
+                operation_type=operation_type, 
+                mix_type=mix_type,
+                preferred_input_type=preferred_input_type, 
+                socket_data_type=socket_data_type
+                )
+
+        elif function_type in ('BINARY', 'TERNARY'):
+            class NodeData_Chain(NamedTuple):
+                node_to_add : str
+                subtype_name : str
+                mix_type : str
+                operation_type : str
+                socket_data_type : tuple
+                preferred_input_type : tuple
+                prefer_first_socket : bool
+
+            data = NodeData_Chain(
+                node_to_add=node_to_add, 
+                subtype_name=subtype_name, 
+                operation_type=operation_type, 
+                mix_type=mix_type,
+                prefer_first_socket=prefer_first_socket,
+                preferred_input_type=preferred_input_type, 
+                socket_data_type=socket_data_type
+                )            
+
+        return data
+
+    def execute(self, context):
+        prefs = fetch_user_preferences()
+        merge_hide = prefs.merge_hide
+        merge_position = prefs.merge_position
+
+        nodes, links = get_nodes_links(context)
+
+        #TODO - Fetch operation type and subtype function
+        operation_type = self.operation
+        function_type = self.get_function_type(operation_type)
+
+        selected_nodes = [node for node in context.selected_nodes if node.type != "FRAME"]
+        if not selected_nodes:
+            return {'CANCELLED'}
+
+        for node in nodes:
+            node.select = False
+
+        min_x, max_x, min_y, max_y = get_bounds(selected_nodes)
+
+        if merge_position == 'TOP':
+            align_point = (max_x, max_y)
+        elif merge_position == 'MIDDLE':
+            align_point = (max_x, 0.5 * (min_y + max_y))
+        elif merge_position == 'BOTTOM':
+            align_point = (max_x, min_y)
+        selected_nodes.sort(key=lambda n: n.location.y - (n.dimensions.y / 2), reverse=True)
+
+        data = self.setup_function_data(context, function_type, operation_type)
+
         if function_type == 'UNARY':
-            prev_socket = None
-
-            for node in selected_nodes:
-                new_node = nodes.new(node_to_add)
-                new_node.hide = True
-                new_node.select = True
-                
-                if subtype_name is not None:
-                    setattr(new_node, subtype_name, operation_type)
-
-                from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type)
-
-                links.new(from_socket, to_socket)
-                new_nodes.append(new_node)
+            new_nodes = self.group_merge(context, selected_nodes, data, group_size=1)
 
         elif function_type == 'BATCH':
-            new_node = nodes.new(node_to_add)
-            new_node.hide = True
-            new_node.select = True
+            new_nodes = self.batch_merge(context, selected_nodes, data)
 
-            new_nodes.append(new_node)
-            if subtype_name is not None:
-                setattr(new_node, subtype_name, operation_type)
+        elif function_type == 'TERNARY_MERGE':
+            new_nodes = self.group_merge(context, selected_nodes, data, group_size=3)
 
-            batch_socket = self.get_valid_socket(new_node, mode='Inputs', 
-                data_types=socket_data_type, target_index=batch_socket_index)
-            
-            if not isolate_first_socket:
-                for node in reversed(selected_nodes):
-                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                    links.new(from_socket, batch_socket)
-            else:
-                first_node = selected_nodes.pop(0)
-
-                for node in reversed(selected_nodes):
-                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                    links.new(from_socket, batch_socket)
-
-                first_to_socket = self.get_valid_socket(new_node, mode='Inputs', 
-                    data_types=socket_data_type, target_index=first_socket_index)
-                first_from_socket = self.get_valid_socket(first_node, mode='Outputs', data_types=preferred_input_type)
-
-                links.new(first_from_socket, first_to_socket)
-
-        else:
-            prev_socket = None
-            generator = selected_nodes if (len(selected_nodes) == 1) else islice(selected_nodes, 1, None)
-
-            for node in generator:
-                new_node = nodes.new(node_to_add)
-                new_node.hide = True
-                new_node.select = True
-
-                if subtype_name is not None:
-                    setattr(new_node, subtype_name, operation_type)
-
-                if mix_type is not None:
-                    new_node.data_type = mix_type
-
-                if prev_socket is not None:
-                    from_socket = prev_socket
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=not prefer_first_socket)
-                    links.new(from_socket, to_socket)
-
-                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=prefer_first_socket)
-                    links.new(from_socket, to_socket)
-
-                else:
-                    from_socket = self.get_valid_socket(selected_nodes[0], mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=0)
-                    links.new(from_socket, to_socket)
-
-                    from_socket = self.get_valid_socket(node, mode='Outputs', data_types=preferred_input_type)
-                    to_socket = self.get_valid_socket(new_node, mode='Inputs', data_types=socket_data_type, target_index=1)
-                    links.new(from_socket, to_socket)
+        elif function_type == 'BINARY_MERGE':
+            new_nodes = self.group_merge(context, selected_nodes, data, group_size=2)
                 
-                prev_socket = self.get_valid_socket(new_node, mode='Outputs', data_types=preferred_input_type)
-                new_nodes.append(new_node)
-        
-        #Set last added node to active
-        context.space_data.node_tree.nodes.active = new_node
-        self.arrange_nodes(context, new_nodes, align_point=align_point)
+        elif function_type == 'TERNARY':
+            new_nodes = self.chain_merge(context, selected_nodes, data, group_size=3)
 
+        elif function_type == 'BINARY':
+            new_nodes = self.chain_merge(context, selected_nodes, data, group_size=2)
+        
+        else:
+            raise NotImplementedError(f"Function type '{function_type}', does not have a supported implementation")
+
+        self.arrange_nodes(new_nodes, align_point=align_point)
         return {'FINISHED'}
 
 
@@ -1902,56 +2125,75 @@ class NWBatchChangeNodes(Operator, NWBase):
 
     blend_type: EnumProperty(
         name="Blend Type",
+        default = 'CURRENT',
         items=blend_types + navs,
     )
-    operation: EnumProperty(
+    math_operation: EnumProperty(
         name="Operation",
+        default = 'CURRENT',
         items=operations + navs,
     )
 
+    vector_operation: EnumProperty(
+        name="Vector Operation",
+        default = 'CURRENT',
+        items=vector_operations + navs,
+    )
+
+    bool_operation: EnumProperty(
+        name="Boolean Type",
+        default = 'CURRENT',
+        items=boolean_operations + navs,
+    )
+
+    @staticmethod
+    def set_node_property(node, property_name, value, prop_list, should_wrap):
+        if value == 'CURRENT':
+            return
+
+        elif value not in nav_list:
+            prop_value = value
+        else:
+            current_value = getattr(node, property_name)
+            
+            if value == 'NEXT':
+                prop_value = next_in_list(prop_list, key=current_value, wrap=should_wrap)
+            if value == 'PREV':
+                prop_value = prev_in_list(prop_list, key=current_value, wrap=should_wrap)
+
+        setattr(node, property_name, prop_value)
+
     def execute(self, context):
-        blend_type = self.blend_type
-        operation = self.operation
-        for node in context.selected_nodes:
-            if node.type == 'MIX_RGB' or (node.bl_idname == 'ShaderNodeMix' and node.data_type == 'RGBA'):
-                if blend_type not in [nav[0] for nav in navs]:
-                    node.blend_type = blend_type
-                else:
-                    if blend_type == 'NEXT':
-                        index = [i for i, entry in enumerate(blend_types) if node.blend_type in entry][0]
-                        # index = blend_types.index(node.blend_type)
-                        if index == len(blend_types) - 1:
-                            node.blend_type = blend_types[0][0]
-                        else:
-                            node.blend_type = blend_types[index + 1][0]
+        nodes = list(filter_nodes_by_type(context.selected_nodes, 
+            types=('MIX_RGB', 'MATH', 'VECT_MATH', 'BOOLEAN_MATH')))
 
-                    if blend_type == 'PREV':
-                        index = [i for i, entry in enumerate(blend_types) if node.blend_type in entry][0]
-                        if index == 0:
-                            node.blend_type = blend_types[len(blend_types) - 1][0]
-                        else:
-                            node.blend_type = blend_types[index - 1][0]
+        if len(nodes) <= 0:
+            return {'CANCELLED'}
 
-            if node.type == 'MATH' or node.bl_idname == 'ShaderNodeMath':
-                if operation not in [nav[0] for nav in navs]:
-                    node.operation = operation
-                else:
-                    if operation == 'NEXT':
-                        index = [i for i, entry in enumerate(operations) if node.operation in entry][0]
-                        # index = operations.index(node.operation)
-                        if index == len(operations) - 1:
-                            node.operation = operations[0][0]
-                        else:
-                            node.operation = operations[index + 1][0]
+        mode = (fetch_user_preferences("batch_change_behavior") == 'WRAP')
 
-                    if operation == 'PREV':
-                        index = [i for i, entry in enumerate(operations) if node.operation in entry][0]
-                        # index = operations.index(node.operation)
-                        if index == 0:
-                            node.operation = operations[len(operations) - 1][0]
-                        else:
-                            node.operation = operations[index - 1][0]
+        for node in nodes:
+            if node.type in ('MIX', 'MIX_RGB'):
+                self.set_node_property(node, "blend_type", 
+                    value=self.blend_type, prop_list=blend_types_list, should_wrap=mode)
 
+            if node.type == 'MATH':
+                self.set_node_property(node, "operation", 
+                    value=self.math_operation, prop_list=math_operations_list, should_wrap=mode)
+
+            if node.type == 'VECT_MATH':
+                self.set_node_property(node, "operation", 
+                    value=self.vector_operation, prop_list=vector_operations_list, should_wrap=mode)
+
+            if node.type == 'BOOLEAN_MATH':
+                self.set_node_property(node, "operation", 
+                    value=self.bool_operation, prop_list=bool_operations_list, should_wrap=mode)
+
+        #Somehow the operator stores the state from the last time it's called so a hard reset here was applied
+        self.blend_type = 'CURRENT'
+        self.math_operation = 'CURRENT'
+        self.vector_operation = 'CURRENT'
+        self.bool_operation = 'CURRENT'
         return {'FINISHED'}
 
 
@@ -2226,8 +2468,7 @@ class NWAddTextureSetup(Operator, NWBase):
     def execute(self, context):
         nodes, links = get_nodes_links(context)
 
-        texture_types = [x.nodetype for x in
-                         get_nodes_from_category('Texture', context)]
+        texture_types = get_texture_node_types()
         selected_nodes = [n for n in nodes if n.select]
 
         for node in selected_nodes:
@@ -2261,7 +2502,7 @@ class NWAddTextureSetup(Operator, NWBase):
                 x_offset = x_offset + image_texture_node.width + padding
                 image_texture_node.location = [locx - x_offset, locy]
                 nodes.active = image_texture_node
-                links.new(image_texture_node.outputs[0], target_input)
+                connect_sockets(image_texture_node.outputs[0], target_input)
 
                 # The mapping setup following this will connect to the first input of this image texture.
                 target_input = image_texture_node.inputs[0]
@@ -2273,7 +2514,7 @@ class NWAddTextureSetup(Operator, NWBase):
                 mapping_node = nodes.new('ShaderNodeMapping')
                 x_offset = x_offset + mapping_node.width + padding
                 mapping_node.location = [locx - x_offset, locy]
-                links.new(mapping_node.outputs[0], target_input)
+                connect_sockets(mapping_node.outputs[0], target_input)
 
                 # Add Texture Coordinates node.
                 tex_coord_node = nodes.new('ShaderNodeTexCoord')
@@ -2283,7 +2524,7 @@ class NWAddTextureSetup(Operator, NWBase):
                 is_procedural_texture = is_texture_node and node.type != 'TEX_IMAGE'
                 use_generated_coordinates = is_procedural_texture or use_environment_texture
                 tex_coord_output = tex_coord_node.outputs[0 if use_generated_coordinates else 2]
-                links.new(tex_coord_output, mapping_node.inputs[0])
+                connect_sockets(tex_coord_output, mapping_node.inputs[0])
 
         return {'FINISHED'}
 
@@ -2408,7 +2649,7 @@ class NWAddPrincipledSetup(Operator, NWBase, ImportHelper):
                 disp_node = nodes.new(type='ShaderNodeDisplacement')
                 # Align the Displacement node under the active Principled BSDF node
                 disp_node.location = active_node.location + Vector((100, -700))
-                link = links.new(disp_node.inputs[0], disp_texture.outputs[0])
+                link = connect_sockets(disp_node.inputs[0], disp_texture.outputs[0])
 
                 # TODO Turn on true displacement in the material
                 # Too complicated for now
@@ -2417,7 +2658,7 @@ class NWAddPrincipledSetup(Operator, NWBase, ImportHelper):
                 output_node = [n for n in nodes if n.bl_idname == 'ShaderNodeOutputMaterial']
                 if output_node:
                     if not output_node[0].inputs[2].is_linked:
-                        link = links.new(output_node[0].inputs[2], disp_node.outputs[0])
+                        link = connect_sockets(output_node[0].inputs[2], disp_node.outputs[0])
 
                 continue
 
@@ -2447,13 +2688,13 @@ class NWAddPrincipledSetup(Operator, NWBase, ImportHelper):
                     if match_normal:
                         # If Normal add normal node in between
                         normal_node = nodes.new(type='ShaderNodeNormalMap')
-                        link = links.new(normal_node.inputs[1], texture_node.outputs[0])
+                        link = connect_sockets(normal_node.inputs[1], texture_node.outputs[0])
                     elif match_bump:
                         # If Bump add bump node in between
                         normal_node = nodes.new(type='ShaderNodeBump')
-                        link = links.new(normal_node.inputs[2], texture_node.outputs[0])
+                        link = connect_sockets(normal_node.inputs[2], texture_node.outputs[0])
 
-                    link = links.new(active_node.inputs[sname[0]], normal_node.outputs[0])
+                    link = connect_sockets(active_node.inputs[sname[0]], normal_node.outputs[0])
                     normal_node_texture = texture_node
 
                 elif sname[0] == 'Roughness':
@@ -2464,19 +2705,19 @@ class NWAddPrincipledSetup(Operator, NWBase, ImportHelper):
 
                     if match_rough:
                         # If Roughness nothing to to
-                        link = links.new(active_node.inputs[sname[0]], texture_node.outputs[0])
+                        link = connect_sockets(active_node.inputs[sname[0]], texture_node.outputs[0])
 
                     elif match_gloss:
                         # If Gloss Map add invert node
                         invert_node = nodes.new(type='ShaderNodeInvert')
-                        link = links.new(invert_node.inputs[1], texture_node.outputs[0])
+                        link = connect_sockets(invert_node.inputs[1], texture_node.outputs[0])
 
-                        link = links.new(active_node.inputs[sname[0]], invert_node.outputs[0])
+                        link = connect_sockets(active_node.inputs[sname[0]], invert_node.outputs[0])
                         roughness_node = texture_node
 
                 else:
                     # This is a simple connection Texture --> Input slot
-                    link = links.new(active_node.inputs[sname[0]], texture_node.outputs[0])
+                    link = connect_sockets(active_node.inputs[sname[0]], texture_node.outputs[0])
 
                 # Use non-color for all but 'Base Color' Textures
                 if not sname[0] in ['Base Color', 'Emission'] and texture_node.image:
@@ -2521,15 +2762,15 @@ class NWAddPrincipledSetup(Operator, NWBase, ImportHelper):
                                  sum(n.location.y for n in texture_nodes) / len(texture_nodes)))
             reroute.location = tex_coords + Vector((-50, -120))
             for texture_node in texture_nodes:
-                link = links.new(texture_node.inputs[0], reroute.outputs[0])
-            link = links.new(reroute.inputs[0], mapping.outputs[0])
+                link = connect_sockets(texture_node.inputs[0], reroute.outputs[0])
+            link = connect_sockets(reroute.inputs[0], mapping.outputs[0])
         else:
-            link = links.new(texture_nodes[0].inputs[0], mapping.outputs[0])
+            link = connect_sockets(texture_nodes[0].inputs[0], mapping.outputs[0])
 
         # Connect texture_coordiantes to mapping node
         texture_input = nodes.new(type='ShaderNodeTexCoord')
         texture_input.location = mapping.location + Vector((-200, 0))
-        link = links.new(mapping.inputs[0], texture_input.outputs[2])
+        link = connect_sockets(mapping.inputs[0], texture_input.outputs[2])
 
         # Create frame around tex coords and mapping
         frame = nodes.new(type='NodeFrame')
@@ -2563,92 +2804,68 @@ class NWAddReroutes(Operator, NWBase):
     option: EnumProperty(
         name="option",
         items=[
-            ('ALL', 'to all', 'Add to all outputs'),
-            ('LOOSE', 'to loose', 'Add only to loose outputs'),
-            ('LINKED', 'to linked', 'Add only to linked outputs'),
+            ('ALL', 'to All Outputs', 'Add to all outputs'),
+            ('LOOSE', 'to Loose Outputs', 'Add only to loose outputs'),
+            ('LINKED', 'to Linked Outputs', 'Add only to linked outputs'),
         ]
     )
+    
+    @staticmethod
+    def has_outputs(nodes):
+        return (node for node in nodes if len(node.outputs) > 0)
+
+    @staticmethod
+    def filter_sockets(sockets):
+        for socket in sockets:
+            if socket.enabled and not socket.hide and not is_virtual_socket(socket):
+                yield socket
+
+    def is_valid(self, socket):
+        option = self.option
+        return ((option == 'ALL') or
+                (option == 'LOOSE' and not socket.is_linked) or
+                (option == 'LINKED' and socket.is_linked))
 
     def execute(self, context):
-        tree_type = context.space_data.node_tree.type
-        option = self.option
-        nodes, links = get_nodes_links(context)
-        # output valid when option is 'all' or when 'loose' output has no links
-        valid = False
-        post_select = []  # nodes to be selected after execution
-        # create reroutes and recreate links
-        for node in [n for n in nodes if n.select]:
-            if node.outputs:
-                x = node.location.x
-                y = node.location.y
-                width = node.width
-                # unhide 'REROUTE' nodes to avoid issues with location.y
-                if node.type == 'REROUTE':
-                    node.hide = False
-                # When node is hidden - width_hidden not usable.
-                # Hack needed to calculate real width
-                if node.hide:
-                    bpy.ops.node.select_all(action='DESELECT')
-                    helper = nodes.new('NodeReroute')
-                    helper.select = True
-                    node.select = True
-                    # resize node and helper to zero. Then check locations to calculate width
-                    bpy.ops.transform.resize(value=(0.0, 0.0, 0.0))
-                    width = 2.0 * (helper.location.x - node.location.x)
-                    # restore node location
-                    node.location = x, y
-                    # delete helper
-                    node.select = False
-                    # only helper is selected now
-                    bpy.ops.node.delete()
-                x = node.location.x + width + 20.0
-                if node.type != 'REROUTE':
-                    y -= 35.0
-                y_offset = -22.0
-                loc = x, y
-            reroutes_count = 0  # will be used when aligning reroutes added to hidden nodes
-            for out_i, output in enumerate(node.outputs):
-                pass_used = False  # initial value to be analyzed if 'R_LAYERS'
-                # if node != 'R_LAYERS' - "pass_used" not needed, so set it to True
-                if node.type != 'R_LAYERS':
-                    pass_used = True
-                else:  # if 'R_LAYERS' check if output represent used render pass
-                    node_scene = node.scene
-                    node_layer = node.layer
-                    # If output - "Alpha" is analyzed - assume it's used. Not represented in passes.
-                    if output.name == 'Alpha':
-                        pass_used = True
-                    else:
-                        # check entries in global 'rl_outputs' variable
-                        for rlo in rl_outputs:
-                            if output.name in {rlo.output_name, rlo.exr_output_name}:
-                                pass_used = getattr(node_scene.view_layers[node_layer], rlo.render_pass)
-                                break
-                if pass_used:
-                    valid = ((option == 'ALL') or
-                             (option == 'LOOSE' and not output.links) or
-                             (option == 'LINKED' and output.links))
-                    # Add reroutes only if valid, but offset location in all cases.
-                    if valid:
-                        n = nodes.new('NodeReroute')
-                        nodes.active = n
-                        for link in output.links:
-                            links.new(n.outputs[0], link.to_socket)
-                        links.new(output, n.inputs[0])
-                        n.location = loc
-                        post_select.append(n)
-                    reroutes_count += 1
-                    y += y_offset
-                    loc = x, y
-            # disselect the node so that after execution of script only newly created nodes are selected
-            node.select = False
-            # nicer reroutes distribution along y when node.hide
+        tree = context.space_data.edit_tree
+        added_reroutes = [] 
+
+        for node in self.has_outputs(context.selected_nodes):   
+            # unhide 'REROUTE' nodes to avoid issues with location.y
+            if node.type == 'REROUTE':
+                node.hide = False
+
+            x = node.location.x + node.width + 20.0
+            sockets = tuple(self.filter_sockets(node.outputs))
+
+            y_offset = -22.0
             if node.hide:
-                y_translate = reroutes_count * y_offset / 2.0 - y_offset - 35.0
-                for reroute in [r for r in nodes if r.select]:
-                    reroute.location.y -= y_translate
-            for node in post_select:
-                node.select = True
+                y_init = node.location.y - (len(sockets)/ 2.0 - 1) * y_offset
+            elif node.type == 'REROUTE':
+                y_init = node.location.y
+            else:
+                y_init = node.location.y - 35.0
+            y_locs = itertools.accumulate((y_offset for _ in sockets), initial=y_init)
+
+            for output, y_loc in zip(sockets, y_locs):
+                # Add reroutes only if valid, but offset location in all cases.
+                if self.is_valid(output):
+                    reroute = tree.nodes.new('NodeReroute')
+
+                    for link in output.links:
+                        tree.links.new(reroute.outputs[0], link.to_socket)
+                    tree.links.new(output, reroute.inputs[0])
+
+                    reroute.location = (x, y_loc)
+                    added_reroutes.append(reroute)
+                    
+        if len(added_reroutes) <= 0:
+            return {'CANCELLED'}
+
+        bpy.ops.node.select_all(action='DESELECT')
+        for node in added_reroutes:
+            node.select = True
+        tree.nodes.active = node
 
         return {'FINISHED'}
 
@@ -2726,7 +2943,7 @@ class NWLinkActiveToSelected(Operator, NWBase):
                         for input in node.inputs:
                             if input.type == out.type or node.type == 'REROUTE':
                                 if replace or not input.is_linked:
-                                    links.new(out, input)
+                                    connect_sockets(out, input)
                                     if not use_node_name and not use_outputs_names:
                                         doit = False
                                     break
@@ -2991,7 +3208,7 @@ class NWLinkToOutputNode(Operator):
             elif tree_type == 'GeometryNodeTree':
                 if active.outputs[output_index].type != 'GEOMETRY':
                     return {'CANCELLED'}
-            links.new(active.outputs[output_index], output_node.inputs[out_input_index])
+            connect_sockets(active.outputs[output_index], output_node.inputs[out_input_index])
 
         force_update(context)  # viewport render does not update
 
@@ -3012,7 +3229,7 @@ class NWMakeLink(Operator, NWBase):
         n1 = nodes[context.scene.NWLazySource]
         n2 = nodes[context.scene.NWLazyTarget]
 
-        links.new(n1.outputs[self.from_socket], n2.inputs[self.to_socket])
+        connect_sockets(n1.outputs[self.from_socket], n2.inputs[self.to_socket])
 
         force_update(context)
 
@@ -3036,7 +3253,7 @@ class NWCallInputsMenu(Operator, NWBase):
         if len(n2.inputs) > 1:
             bpy.ops.wm.call_menu("INVOKE_DEFAULT", name=NWConnectionListInputs.bl_idname)
         elif len(n2.inputs) == 1:
-            links.new(n1.outputs[self.from_socket], n2.inputs[0])
+            connect_sockets(n1.outputs[self.from_socket], n2.inputs[0])
         return {'FINISHED'}
 
 
@@ -3195,7 +3412,6 @@ class NWAddMultipleImages(Operator, NWBase, ImportHelper):
             new_nodes.append(node)
             node.label = fname
             node.hide = True
-            node.width_hidden = 100
             node.location.x = xloc
             node.location.y = yloc
             yloc -= 40
@@ -3344,7 +3560,7 @@ class NWResetNodes(bpy.types.Operator):
     def execute(self, context):
         node_active = context.active_node
         node_selected = context.selected_nodes
-        node_ignore = ["FRAME", "REROUTE", "GROUP"]
+        node_ignore = ["FRAME", "REROUTE", "GROUP", "SIMULATION_INPUT", "SIMULATION_OUTPUT"]
 
         # Check if one node is selected at least
         if not (len(node_selected) > 0):

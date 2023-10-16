@@ -1,9 +1,10 @@
+# SPDX-FileCopyrightText: 2019-2022 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
 from bpy.types import Panel, Menu
 from bpy.props import StringProperty
-from nodeitems_utils import node_categories_iter, NodeItemCustom
 
 from . import operators
 
@@ -20,18 +21,46 @@ from .utils.constants import (
     boolean_operations,
     boolean_operations_menu_dict
     )
-from .utils.nodes import get_nodes_links, fw_check, NWBase
+from .utils.nodes import get_nodes_links, fw_check, NWBase, fetch_user_preferences
 
 
 def drawlayout(context, layout, mode='non-panel'):
     tree_type = context.space_data.tree_type
+    prefs = fetch_user_preferences()
 
     col = layout.column(align=True)
     col.menu(NWMergeNodesMenu.bl_idname)
     col.separator()
 
+    if mode == 'panel':
+        box = col.box()
+        show_binary = prefs.merge_binary_mode in ('AUTO', 'CHAIN')
+        show_ternary = prefs.merge_ternary_mode in ('AUTO', 'CHAIN')
+
+        box.label(text="Binary Merge Mode:")
+        box.prop(prefs, "merge_binary_mode", text="")
+        if show_binary:
+            box.prop(prefs, "prefer_first_socket_binary")
+
+        box.label(text="Ternary Merge Mode:")
+        box.prop(prefs, "merge_ternary_mode", text="")
+        if show_ternary:
+            box.prop(prefs, "prefer_first_socket_ternary")
+
+    col.separator()
+
     col = layout.column(align=True)
-    col.menu(NWSwitchNodeTypeMenu.bl_idname, text="Switch Node Type")
+    #col.menu(NWSwitchNodeTypeMenu.bl_idname, text="Switch Node Type")
+    tree_type = context.space_data.tree_type
+    if tree_type == 'GeometryNodeTree':
+        col.menu("NODE_MT_geometry_node_switch_all")
+    elif tree_type == 'CompositorNodeTree':
+        col.menu("NODE_MT_compositor_node_switch_all")
+    elif tree_type == 'ShaderNodeTree':
+        col.menu("NODE_MT_shader_node_switch_all")
+    elif tree_type == 'TextureNodeTree':
+        col.menu("NODE_MT_texture_node_switch_all")
+
     col.separator()
 
     if tree_type == 'ShaderNodeTree':
@@ -165,7 +194,7 @@ class NWMergeGeometryMenu(Menu, NWBase):
         # The boolean node + Join Geometry node
         for operation, name, description in geo_combine_operations:
             props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
-            props.mode = operation
+            props.operation = operation
             props.merge_type = 'GEOMETRY'
 
 
@@ -183,7 +212,7 @@ class NWMergeShadersMenu(Menu, NWBase):
                     props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
             else:
                 props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
-            props.mode = operation
+            props.operation = operation
             props.merge_type = 'SHADER'
 
 
@@ -200,7 +229,7 @@ class NWMergeMixMenu(Menu, NWBase):
             col.separator(factor=1.0)
             for operation, name, description in items:
                 props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name, icon='NONE')
-                props.mode = operation
+                props.operation = operation
                 props.merge_type = 'MIX_COLOR'   
 
 
@@ -221,7 +250,7 @@ class NWMergeMathMenu(Menu, NWBase):
                     col.separator(factor=1.0)
                 else:
                     props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name, icon='NONE')
-                    props.mode = operation
+                    props.operation = operation
                     props.merge_type = 'MATH'
 
 
@@ -242,7 +271,7 @@ class NWMergeVectorMathMenu(Menu, NWBase):
                     col.separator(factor=1.0)
                 else:
                     props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name, icon='NONE')
-                    props.mode = operation
+                    props.operation = operation
                     props.merge_type = 'VECTOR'
 
 
@@ -254,7 +283,7 @@ class NWMergeStringMenu(Menu, NWBase):
         layout = self.layout
         for operation, name, description in string_operations:
             props = layout.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
-            props.mode = operation
+            props.operation = operation
             props.merge_type = 'STRING'
 
 class NWMergeBoolMenu(Menu, NWBase):
@@ -270,7 +299,7 @@ class NWMergeBoolMenu(Menu, NWBase):
             col.separator(factor=1.0)
             for operation, name, description in items:
                 props = col.operator(operators.NWMergeNodesRefactored.bl_idname, text=name)
-                props.mode = operation
+                props.operation = operation
                 props.merge_type = 'BOOLEAN'
 
 
@@ -320,30 +349,81 @@ class NWBatchChangeNodesMenu(Menu, NWBase):
         layout = self.layout
         layout.menu(NWBatchChangeBlendTypeMenu.bl_idname)
         layout.menu(NWBatchChangeOperationMenu.bl_idname)
+        if context.space_data.tree_type in ('GeometryNodeTree', 'ShaderNodeTree'):
+            layout.menu(NWBatchChangeVectorOperationMenu.bl_idname)
+
+
+        if context.space_data.tree_type == 'GeometryNodeTree':
+            layout.separator()
+            layout.menu(NWBatchChangeBoolMenu.bl_idname)
 
 
 class NWBatchChangeBlendTypeMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_batch_change_blend_type_menu"
-    bl_label = "Batch Change Blend Type"
+    bl_label = "Change Mix Blend Type"
 
     def draw(self, context):
         layout = self.layout
-        for type, name, description in blend_types:
-            props = layout.operator(operators.NWBatchChangeNodes.bl_idname, text=name)
-            props.blend_type = type
-            props.operation = 'CURRENT'
-
+        row = layout.row()
+        col = row.column()
+        for key, items in blend_types_menu_dict.items():
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name, icon='NONE')
+                props.blend_type = operation
 
 class NWBatchChangeOperationMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_batch_change_operation_menu"
-    bl_label = "Batch Change Math Operation"
+    bl_label = "Change Math Operation"
 
     def draw(self, context):
         layout = self.layout
-        for type, name, description in operations:
-            props = layout.operator(operators.NWBatchChangeNodes.bl_idname, text=name)
-            props.blend_type = 'CURRENT'
-            props.operation = type
+        row = layout.row()
+        
+        for key, items in operations_menu_dict.items():
+            col = row.column()
+            col.label(text=key, icon='NONE')
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                if operation == "LayoutSeparator":
+                    col.separator(factor=1.0)
+                else:
+                    props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name, icon='NONE')
+                    props.operation = operation
+
+class NWBatchChangeBoolMenu(Menu, NWBase):
+    bl_idname = "NODE_MT_fw_batch_change_bool_menu"
+    bl_label = "Change Boolean Operation"
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row()
+        col = row.column()   
+
+        for key, items in boolean_operations_menu_dict.items():
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name)
+                props.bool_type = operation
+
+class NWBatchChangeVectorOperationMenu(Menu, NWBase):
+    bl_idname = "NODE_MT_fw_batch_change_vector_operation_menu"
+    bl_label = "Change Vector Operation"
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row()
+        
+        for key, items in vector_operations_menu_dict.items():
+            col = row.column()
+            col.label(text=key, icon='NONE')
+            col.separator(factor=1.0)
+            for operation, name, description in items:
+                if operation == "LayoutSeparator":
+                    col.separator(factor=1.0)
+                else:
+                    props = col.operator(operators.NWBatchChangeNodes.bl_idname, text=name)
+                    props.vector_operation = operation
 
 
 class NWCopyToSelectedMenu(Menu, NWBase):
@@ -477,45 +557,35 @@ class NWAttributeMenu(bpy.types.Menu):
 class NWSwitchNodeTypeMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_switch_node_type_menu"
     bl_label = "Switch Type to..."
+    bl_options = {'SEARCH_ON_KEY_PRESS'}
+
+    def draw_search(self, context):
+        layout = self.layout
+
+        if layout.operator_context == 'EXEC_REGION_WIN':
+            layout.operator_context = 'INVOKE_REGION_WIN'
+            layout.operator("WM_OT_search_single_menu", text="Search...", icon='VIEWZOOM').menu_idname = self.bl_idname
+            layout.separator()
+
+        layout.operator_context = 'INVOKE_REGION_WIN'
 
     def draw(self, context):
         layout = self.layout
+        self.draw_search(context)
+
+        layout.operator_context = 'INVOKE_REGION_WIN'
+
         tree_type = context.space_data.tree_type
-
-
-        if tree_type != 'GeometryNodeTree':
-            categories = [c for c in node_categories_iter(context)
-                        if c.name not in ['Group', 'Script']]
-            for cat in categories:
-                idname = f"NODE_MT_fw_switch_{cat.identifier}_submenu"
-                if hasattr(bpy.types, idname):
-                    if cat.name == 'Layout':
-                        from .switch_nodes_geometrymenus import NODE_MT_NWSwitchNodes_GN_group
-                        layout.menu(NODE_MT_NWSwitchNodes_GN_group.bl_idname)
-
-                    layout.menu(idname)
-                else:
-                    layout.label(text="Unable to load altered node lists.")
-                    layout.label(text="Please re-enable Node Wrangler.")
-                    break
+        if tree_type == 'GeometryNodeTree':
+            layout.menu_contents("NODE_MT_geometry_node_switch_all")
+        elif tree_type == 'CompositorNodeTree':
+            layout.menu_contents("NODE_MT_compositor_node_switch_all")
+        elif tree_type == 'ShaderNodeTree':
+            layout.menu_contents("NODE_MT_shader_node_switch_all")
+        elif tree_type == 'TextureNodeTree':
+            layout.menu_contents("NODE_MT_texture_node_switch_all")
         else:
-            from .switch_nodes_geometrymenus import NODE_MT_NWSwitchNodes_GN
-            layout.menu_contents(NODE_MT_NWSwitchNodes_GN.bl_idname)
-
-def draw_switch_category_submenu(self, context):
-    layout = self.layout
-    if self.category.name == 'Layout':
-        for node in self.category.items(context):
-            if node.nodetype != 'NodeFrame':
-                props = layout.operator(operators.NWSwitchNodeType.bl_idname, text=node.label)
-                props.to_type = node.nodetype
-    else:
-        for node in self.category.items(context):
-            if isinstance(node, NodeItemCustom):
-                node.draw(self, layout, context)
-                continue
-            props = layout.operator(operators.NWSwitchNodeType.bl_idname, text=node.label)
-            props.to_type = node.nodetype
+            layout.label(icon='WARNING', text="Switch Nodes not available in this editor.")
 
 #
 #  APPENDAGES TO EXISTING UI
@@ -557,7 +627,7 @@ def save_viewer_menu_func(self, context):
 def reset_nodes_button(self, context):
     node_active = context.active_node
     node_selected = context.selected_nodes
-    node_ignore = ["FRAME", "REROUTE", "GROUP"]
+    node_ignore = ["FRAME", "REROUTE", "GROUP", "SIMULATION_INPUT", "SIMULATION_OUTPUT"]
 
     # Check if active node is in the selection and respective type
     if (len(node_selected) == 1) and node_active and node_active.select and node_active.type not in node_ignore:
@@ -587,6 +657,8 @@ classes = (
     NWBatchChangeNodesMenu,
     NWBatchChangeBlendTypeMenu,
     NWBatchChangeOperationMenu,
+    NWBatchChangeVectorOperationMenu,
+    NWBatchChangeBoolMenu,
     NWCopyToSelectedMenu,
     NWCopyLabelMenu,
     NWAddReroutesMenu,
@@ -606,11 +678,11 @@ def register():
 
     # menu items
     bpy.types.NODE_MT_select.append(select_parent_children_buttons)
-    bpy.types.NODE_MT_category_SH_NEW_INPUT.prepend(attr_nodes_menu_func)
+    bpy.types.NODE_MT_category_shader_input.prepend(attr_nodes_menu_func)
     bpy.types.NODE_PT_backdrop.append(bgreset_menu_func)
     bpy.types.NODE_PT_active_node_generic.append(save_viewer_menu_func)
-    bpy.types.NODE_MT_category_SH_NEW_TEXTURE.prepend(multipleimages_menu_func)
-    bpy.types.NODE_MT_category_CMP_INPUT.prepend(multipleimages_menu_func)
+    bpy.types.NODE_MT_category_shader_texture.prepend(multipleimages_menu_func)
+    bpy.types.NODE_MT_category_compositor_input.prepend(multipleimages_menu_func)
     bpy.types.NODE_PT_active_node_generic.prepend(reset_nodes_button)
     bpy.types.NODE_MT_node.prepend(reset_nodes_button)
 
@@ -618,11 +690,11 @@ def register():
 def unregister():
     # menu items
     bpy.types.NODE_MT_select.remove(select_parent_children_buttons)
-    bpy.types.NODE_MT_category_SH_NEW_INPUT.remove(attr_nodes_menu_func)
+    bpy.types.NODE_MT_category_shader_input.remove(attr_nodes_menu_func)
     bpy.types.NODE_PT_backdrop.remove(bgreset_menu_func)
     bpy.types.NODE_PT_active_node_generic.remove(save_viewer_menu_func)
-    bpy.types.NODE_MT_category_SH_NEW_TEXTURE.remove(multipleimages_menu_func)
-    bpy.types.NODE_MT_category_CMP_INPUT.remove(multipleimages_menu_func)
+    bpy.types.NODE_MT_category_shader_texture.remove(multipleimages_menu_func)
+    bpy.types.NODE_MT_category_compositor_input.remove(multipleimages_menu_func)
     bpy.types.NODE_PT_active_node_generic.remove(reset_nodes_button)
     bpy.types.NODE_MT_node.remove(reset_nodes_button)
 
