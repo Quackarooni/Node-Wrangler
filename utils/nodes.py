@@ -126,13 +126,14 @@ def connect_sockets(input, output):
         return
     
     if input.type != output.type and not (is_virtual_socket(input) or is_virtual_socket(output)):
-        if 'GEOMETRY' in (input.type, output.type):
-            #print("Cannot connect geometry and non-geometry socket together")
-            return 
+        if not ("REROUTE" in (input_node.type, output_node.type) and not input.is_linked):
+            if 'GEOMETRY' in (input.type, output.type):
+                #print("Cannot connect geometry and non-geometry socket together")
+                return 
 
-        if ('SHADER' == output.type) and ('SHADER' != input.type):
-            #print("Cannot connect shader output to not shader input")
-            return 
+            if ('SHADER' == output.type) and ('SHADER' != input.type):
+                #print("Cannot connect shader output to not shader input")
+                return 
 
     if output_node.type in ('SIMULATION_INPUT', 'SIMULATION_OUTPUT') and is_virtual_socket(input):
         if output.type in valid_sim_sockets:
