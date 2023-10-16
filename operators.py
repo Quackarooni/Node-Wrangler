@@ -2808,8 +2808,13 @@ class NWAddReroutes(Operator, NWBase):
             ('LINKED', 'to linked', 'Add only to linked outputs'),
         ]
     )
+    
+    @staticmethod
+    def has_outputs(nodes):
+        return (node for node in nodes if len(node.outputs) > 0)
 
-    def filter_sockets(self, sockets):
+    @staticmethod
+    def filter_sockets(sockets):
         for socket in sockets:
             if socket.enabled and not socket.hide and not is_virtual_socket(socket):
                 yield socket
@@ -2822,47 +2827,37 @@ class NWAddReroutes(Operator, NWBase):
 
     def execute(self, context):
         tree = context.space_data.edit_tree
-        nodes = tree.nodes
+        added_reroutes = []  
 
-        post_select = []  # nodes to be selected after execution
-        # create reroutes and recreate links
-        for node in context.selected_nodes:
-            if len(node.outputs) <= 0:
-                continue
-            
+        for node in self.has_outputs(context.selected_nodes):   
             # unhide 'REROUTE' nodes to avoid issues with location.y
             if node.type == 'REROUTE':
                 node.hide = False
 
             x = node.location.x + node.width + 20.0
-            y = node.location.y
-            if node.type != 'REROUTE':
-                y -= 35.0
+            sockets = tuple(self.filter_sockets(node.outputs))
+
             y_offset = -22.0
-            
-            reroutes_count = 0  # will be used when aligning reroutes added to hidden nodes
-            for output in self.filter_sockets(node.outputs):
+            if node.hide:
+                y_init = node.location.y - (len(sockets)/ 2.0 - 1) * y_offset
+            elif node.type == 'REROUTE':
+                y_init = node.location.y
+            else:
+                y_init = node.location.y - 35.0
+            y_locs = itertools.accumulate((y_offset for _ in sockets), initial=y_init)
+
+            for output, y_loc in zip(sockets, y_locs):
                 # Add reroutes only if valid, but offset location in all cases.
                 if self.is_valid(output):
-                    n = nodes.new('NodeReroute')
-                    nodes.active = n
+                    reroute = tree.nodes.new('NodeReroute')
+
                     for link in output.links:
-                        tree.links.new(n.outputs[0], link.to_socket)
-                    tree.links.new(output, n.inputs[0])
-                    n.location = (x, y)
-                    post_select.append(n)
-                reroutes_count += 1
-                y += y_offset
-            # disselect the node so that after execution of script only newly created nodes are selected
-            node.select = False
-            # nicer reroutes distribution along y when node.hide
-            if node.hide:
-                y_translate = reroutes_count * y_offset / 2.0 - y_offset - 35.0
-                for reroute in [r for r in nodes if r.select]:
-                    reroute.location.y -= y_translate
+                        tree.links.new(reroute.outputs[0], link.to_socket)
+                    tree.links.new(output, reroute.inputs[0])
+
+                    reroute.location = (x, y_loc)
+                    added_reroutes.append(reroute)
                     
-            for node in post_select:
-                node.select = True
 
         return {'FINISHED'}
 
