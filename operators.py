@@ -631,7 +631,7 @@ class NWPreviewNode(Operator, NWBase):
         for i, input_socket in enumerate(node.inputs):
             if index and i != index:
                 continue
-            if len(input_socket.links):
+            if input_socket.is_linked:
                 link = input_socket.links[0]
                 next_node = link.from_node
                 external_socket = link.from_socket
@@ -2864,8 +2864,8 @@ class NWAddReroutes(Operator, NWBase):
                                 break
                 if pass_used:
                     valid = ((option == 'ALL') or
-                             (option == 'LOOSE' and not output.links) or
-                             (option == 'LINKED' and output.links))
+                             (option == 'LOOSE' and not output.is_linked) or
+                             (option == 'LINKED' and output.is_linked))
                     # Add reroutes only if valid, but offset location in all cases.
                     if valid:
                         n = nodes.new('NodeReroute')
