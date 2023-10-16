@@ -2809,6 +2809,10 @@ class NWAddReroutes(Operator, NWBase):
             ('LINKED', 'to Linked Outputs', 'Add only to linked outputs'),
         ]
     )
+
+    # TODO - Move this to user-preferences so that it'll stay consistent across operator instances
+    x_offset: FloatProperty(name='offset', default=20.0, min=0)
+    y_offset: FloatProperty(name='spacing', default=-22.0, max=0)
     
     @staticmethod
     def has_outputs(nodes):
@@ -2835,17 +2839,17 @@ class NWAddReroutes(Operator, NWBase):
             if node.type == 'REROUTE':
                 node.hide = False
 
-            x = node.location.x + node.width + 20.0
+            x = node.location.x + node.width + self.x_offset
             sockets = tuple(self.filter_sockets(node.outputs))
 
-            y_offset = -22.0
             if node.hide:
-                y_init = node.location.y - (len(sockets)/ 2.0 - 1) * y_offset
+                y_init = node.location.y - (len(sockets)/ 2.0 - 1) * self.y_offset
             elif node.type == 'REROUTE':
                 y_init = node.location.y
             else:
-                y_init = node.location.y - 35.0
-            y_locs = itertools.accumulate((y_offset for _ in sockets), initial=y_init)
+                node_header = 35.0
+                y_init = node.location.y - node_header
+            y_locs = itertools.accumulate((self.y_offset for _ in sockets), initial=y_init)
 
             for output, y_loc in zip(sockets, y_locs):
                 # Add reroutes only if valid, but offset location in all cases.
