@@ -2828,7 +2828,7 @@ class NWAddReroutes(Operator, NWBase):
 
     def execute(self, context):
         tree = context.space_data.edit_tree
-        added_reroutes = []  
+        added_reroutes = [] 
 
         for node in self.has_outputs(context.selected_nodes):   
             # unhide 'REROUTE' nodes to avoid issues with location.y
@@ -2859,6 +2859,9 @@ class NWAddReroutes(Operator, NWBase):
                     reroute.location = (x, y_loc)
                     added_reroutes.append(reroute)
                     
+        if len(added_reroutes) <= 0:
+            return {'CANCELLED'}
+
         bpy.ops.node.select_all(action='DESELECT')
         for node in added_reroutes:
             node.select = True
