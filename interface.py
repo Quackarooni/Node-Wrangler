@@ -598,7 +598,7 @@ class NWNamedAttributeMenu(bpy.types.Menu):
         if active_tree is None:
             active_tree = context.space_data.node_tree
 
-        attrs = sorted(tuple(set(self.get_named_attrs(active_object, active_tree))))
+        attrs = sorted(tuple(dict(self.get_named_attrs(active_object, active_tree)).items()))
 
         if len(attrs) > 0:
             for attr_name, attr_type in attrs:
