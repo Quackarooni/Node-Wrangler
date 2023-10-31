@@ -22,6 +22,7 @@ from .utils.constants import (
     boolean_operations_menu_dict
     )
 from .utils.nodes import get_nodes_links, fw_check, NWBase, fetch_user_preferences
+import itertools
 
 
 def drawlayout(context, layout, mode='non-panel'):
@@ -554,6 +555,60 @@ class NWAttributeMenu(bpy.types.Menu):
             l.label(text="No attributes on objects with this material")
 
 
+class NWNamedAttributeMenu(bpy.types.Menu):
+    bl_idname = "NODE_MT_fw_node_named_attribute_menu"
+    bl_label = "Named Attributes"
+
+    @classmethod
+    def poll(cls, context):
+        if fw_check(context):
+            return context.space_data.tree_type == 'GeometryNodeTree'
+        return False
+
+    @staticmethod
+    def get_until(iterable, target_item):
+        for item in iterable:
+            yield item
+            if target_item == item:
+                break
+
+    @staticmethod
+    def get_named_attrs(obj, active_tree=None):
+        nodetrees = (m.node_group for m in obj.modifiers if m.type == 'NODES')
+
+        for tree in nodetrees:
+            for node in tree.nodes:
+                if node.bl_label != "Store Named Attribute":
+                    continue
+
+                attr_name = node.inputs["Name"].default_value
+                if attr_name == "":
+                    continue
+
+                yield (attr_name, node.data_type)
+
+            if tree == active_tree:
+                break
+
+    def draw(self, context):
+        layout = self.layout
+        active_object = context.active_object
+        
+        active_tree = context.space_data.edit_tree
+        if active_tree is None:
+            active_tree = context.space_data.node_tree
+
+        attrs = sorted(tuple(set(self.get_named_attrs(active_object, active_tree))))
+
+        if len(attrs) > 0:
+            for attr_name, attr_type in attrs:
+                props = layout.operator(operators.NWAddNamedAttrNode.bl_idname, text=attr_name)
+                props.attr_name = attr_name
+                props.attr_type = attr_type
+        else:
+            layout.label(text="No named attributes detected")
+
+
 class NWSwitchNodeTypeMenu(Menu, NWBase):
     bl_idname = "NODE_MT_fw_switch_node_type_menu"
     bl_label = "Switch Type to..."
@@ -603,6 +658,14 @@ def attr_nodes_menu_func(self, context):
     col = self.layout.column(align=True)
     col.menu("NODE_MT_fw_node_attribute_menu")
     col.separator()
+
+
+def named_attr_nodes_menu_func(self, context):
+    # TODO - Make the configurable by user preference
+    if fw_check(context):
+        col = self.layout.column(align=True)
+        col.separator()
+        col.menu("NODE_MT_fw_node_named_attribute_menu")
 
 
 def multipleimages_menu_func(self, context):
@@ -667,6 +730,7 @@ classes = (
     NWLinkUseNodeNameMenu,
     NWLinkUseOutputsNamesMenu,
     NWAttributeMenu,
+    NWNamedAttributeMenu,
     NWSwitchNodeTypeMenu,
 )
 
@@ -679,6 +743,7 @@ def register():
     # menu items
     bpy.types.NODE_MT_select.append(select_parent_children_buttons)
     bpy.types.NODE_MT_category_shader_input.prepend(attr_nodes_menu_func)
+    bpy.types.NODE_MT_geometry_node_GEO_INPUT.append(named_attr_nodes_menu_func)
     bpy.types.NODE_PT_backdrop.append(bgreset_menu_func)
     bpy.types.NODE_PT_active_node_generic.append(save_viewer_menu_func)
     bpy.types.NODE_MT_category_shader_texture.prepend(multipleimages_menu_func)
@@ -691,6 +756,7 @@ def unregister():
     # menu items
     bpy.types.NODE_MT_select.remove(select_parent_children_buttons)
     bpy.types.NODE_MT_category_shader_input.remove(attr_nodes_menu_func)
+    bpy.types.NODE_MT_geometry_node_GEO_INPUT.remove(named_attr_nodes_menu_func)
     bpy.types.NODE_PT_backdrop.remove(bgreset_menu_func)
     bpy.types.NODE_PT_active_node_generic.remove(save_viewer_menu_func)
     bpy.types.NODE_MT_category_shader_texture.remove(multipleimages_menu_func)
