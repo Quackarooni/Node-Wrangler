@@ -527,8 +527,7 @@ class NWAddAttrNode(Operator, NWBase):
 
     def execute(self, context):
         bpy.ops.node.add_node('INVOKE_DEFAULT', use_transform=True, type="ShaderNodeAttribute")
-        nodes, links = get_nodes_links(context)
-        nodes.active.attribute_name = self.attr_name
+        context.active_node.attribute_name = self.attr_name
         return {'FINISHED'}
 
 
