@@ -520,7 +520,7 @@ class NWResetBG(Operator, NWBase):
 class NWAddAttrNode(Operator, NWBase):
     """Add an Attribute node with this name"""
     bl_idname = 'node.fw_add_attr_node'
-    bl_label = 'Add UV map'
+    bl_label = 'Add Attribute Node'
     bl_options = {'REGISTER', 'UNDO'}
 
     attr_name: StringProperty()
