@@ -531,6 +531,32 @@ class NWAddAttrNode(Operator, NWBase):
         return {'FINISHED'}
 
 
+class NWAddNamedAttrNode(Operator, NWBase):
+    """Add an Named Attribute node with the specified name"""
+    bl_idname = 'node.fw_add_named_attr_node'
+    bl_label = 'Add Named Attribute Node'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    attr_name: StringProperty()
+    attr_type: StringProperty()
+
+    attr_map = {
+        'BYTE_COLOR' : 'FLOAT_COLOR',
+        'FLOAT2' : 'FLOAT_VECTOR',
+        }
+
+    def execute(self, context):
+        bpy.ops.node.add_node('INVOKE_DEFAULT', use_transform=True, type="GeometryNodeInputNamedAttribute")
+        active_node = context.active_node
+
+        attr_type = self.attr_map.get(self.attr_type, self.attr_type)
+
+        active_node.inputs["Name"].default_value = self.attr_name
+        active_node.data_type = attr_type
+
+        return {'FINISHED'}
+
+
 class NWPreviewNode(Operator, NWBase):
     bl_idname = "node.fw_preview_node"
     bl_label = "Preview Node"
@@ -3664,6 +3690,7 @@ classes = (
     NWSwapLinks,
     NWResetBG,
     NWAddAttrNode,
+    NWAddNamedAttrNode,
     NWPreviewNode,
     NWFrameSelected,
     NWReloadImages,
