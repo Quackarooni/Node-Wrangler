@@ -505,16 +505,15 @@ class NWResetBG(Operator, NWBase):
 
     @classmethod
     def poll(cls, context):
-        valid = False
         if fw_check(context):
-            snode = context.space_data
-            valid = snode.tree_type == 'CompositorNodeTree'
-        return valid
+            return context.space_data.tree_type == 'CompositorNodeTree'
+        
+        return False
 
     def execute(self, context):
-        context.space_data.backdrop_zoom = 1
-        context.space_data.backdrop_offset[0] = 0
-        context.space_data.backdrop_offset[1] = 0
+        space = context.space_data
+        space.backdrop_zoom = 1
+        space.backdrop_offset = (0, 0)
         return {'FINISHED'}
 
 
