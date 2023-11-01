@@ -531,28 +531,29 @@ class NWAttributeMenu(bpy.types.Menu):
             valid = snode.tree_type == 'ShaderNodeTree'
         return valid
 
-    def draw(self, context):
-        l = self.layout
-        nodes, links = get_nodes_links(context)
+    @staticmethod
+    def fetch_attributes(context):
         mat = context.object.active_material
+        deps = context.evaluated_depsgraph_get()
 
-        objs = []
-        for obj in bpy.data.objects:
-            for slot in obj.material_slots:
-                if slot.material == mat:
-                    objs.append(obj)
-        attrs = []
-        for obj in objs:
-            if obj.data.attributes:
-                for attr in obj.data.attributes:
-                    attrs.append(attr.name)
-        attrs = list(set(attrs))  # get a unique list
+        for obj in deps.objects:
+            mesh = obj.data
+            is_valid = hasattr(mesh, "materials") and hasattr(mesh, "attributes") and mat.name in mesh.materials
+            
+            if is_valid:
+                for attr in mesh.attributes:
+                    yield attr.name
 
-        if attrs:
+    def draw(self, context):
+        layout = self.layout
+        attrs = sorted(list(set(self.fetch_attributes(context))))
+
+        if len(attrs) > 0:
             for attr in attrs:
-                l.operator(operators.NWAddAttrNode.bl_idname, text=attr).attr_name = attr
+                props = layout.operator(operators.NWAddAttrNode.bl_idname, text=attr)
+                props.attr_name = attr
         else:
-            l.label(text="No attributes on objects with this material")
+            layout.label(text="No attributes on objects with this material")
 
 
 class NWNamedAttributeMenu(bpy.types.Menu):
