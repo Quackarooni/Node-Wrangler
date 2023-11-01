@@ -565,12 +565,6 @@ class NWNamedAttributeMenu(bpy.types.Menu):
             return context.space_data.tree_type == 'GeometryNodeTree'
         return False
 
-    @staticmethod
-    def get_until(iterable, target_item):
-        for item in iterable:
-            yield item
-            if target_item == item:
-                break
 
     @staticmethod
     def get_named_attrs(obj, active_tree=None):

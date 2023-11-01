@@ -9,6 +9,12 @@ def n_wise_iter(iterable, n):
     "s -> (s0,s1,s2,...sn-1), (sn,sn+1,sn+2,...s2n-1), (s2n,s2n+1,s2n+2,...s3n-1), ..."
     return zip_longest(*[iter(iterable)]*n)
 
+def get_until(iterable, target_item):
+    for item in iterable:
+        yield item
+        if target_item == item:
+            break
+
 def filter_nodes_by_type(nodes, types, tree_type=None, *, invert=False):
     if isinstance(types, str):
         types = (types,)
