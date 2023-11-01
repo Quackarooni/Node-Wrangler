@@ -574,6 +574,8 @@ class NWNamedAttributeMenu(bpy.types.Menu):
 
     @staticmethod
     def get_named_attrs(obj, active_tree=None):
+        # TODO - If the Active Node is a Store Named Attribute, it affects node ordering
+        # TODO - Look into a way to make this order more consistent
         nodetrees = (m.node_group for m in obj.modifiers if m.type == 'NODES')
 
         for tree in nodetrees:
