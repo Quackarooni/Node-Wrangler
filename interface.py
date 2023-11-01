@@ -525,11 +525,9 @@ class NWAttributeMenu(bpy.types.Menu):
 
     @classmethod
     def poll(cls, context):
-        valid = False
         if fw_check(context):
-            snode = context.space_data
-            valid = snode.tree_type == 'ShaderNodeTree'
-        return valid
+            return context.space_data.tree_type == 'ShaderNodeTree'
+        return False
 
     @staticmethod
     def fetch_attributes(context):
@@ -565,7 +563,6 @@ class NWNamedAttributeMenu(bpy.types.Menu):
         if fw_check(context):
             return context.space_data.tree_type == 'GeometryNodeTree'
         return False
-
 
     @staticmethod
     def get_named_attrs(obj, active_tree=None):
