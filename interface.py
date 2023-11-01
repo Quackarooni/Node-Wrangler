@@ -578,7 +578,7 @@ class NWNamedAttributeMenu(bpy.types.Menu):
 
         for tree in nodetrees:
             for node in tree.nodes:
-                if node.bl_label != "Store Named Attribute":
+                if node.bl_label != "Store Named Attribute" or node.mute is True:
                     continue
 
                 attr_name = node.inputs["Name"].default_value
