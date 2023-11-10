@@ -534,13 +534,24 @@ class NWAttributeMenu(bpy.types.Menu):
         mat = context.object.active_material
         deps = context.evaluated_depsgraph_get()
 
-        for obj in deps.objects:
+        def is_valid(obj):
             mesh = obj.data
-            is_valid = hasattr(mesh, "materials") and hasattr(mesh, "attributes") and mat.name in mesh.materials
-            
-            if is_valid:
-                for attr in mesh.attributes:
-                    yield attr.name
+            return hasattr(mesh, "materials") and hasattr(mesh, "attributes") and mat.name in mesh.materials
+        
+        valid_objects = tuple(obj for obj in deps.objects if is_valid(obj))
+
+        for obj in valid_objects:
+            for attr in obj.data.attributes:
+                yield attr.name
+
+        for inst in deps.object_instances:
+            if inst.is_instance and inst.parent in valid_objects:
+                obj = inst.object
+                if is_valid(obj):
+                    for attr in obj.data.attributes:
+                        print(attr.name, attr.domain, attr.data_type, dir(attr))
+                        yield attr.name
+
 
     def draw(self, context):
         layout = self.layout
