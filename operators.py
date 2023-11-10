@@ -524,10 +524,12 @@ class NWAddAttrNode(Operator, NWBase):
     bl_options = {'REGISTER', 'UNDO'}
 
     attr_name: StringProperty()
+    attr_type: StringProperty(default='GEOMETRY')
 
     def execute(self, context):
         bpy.ops.node.add_node('INVOKE_DEFAULT', use_transform=True, type="ShaderNodeAttribute")
         context.active_node.attribute_name = self.attr_name
+        context.active_node.attribute_type = self.attr_type
         return {'FINISHED'}
 
 
