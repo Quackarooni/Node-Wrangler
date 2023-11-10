@@ -570,11 +570,19 @@ class NWAttributeMenu(bpy.types.Menu):
         layout = self.layout
         attrs = sorted(list(set(self.fetch_attributes(context))))
 
+        def group_by_type(item):
+            attr_type, attr_name = item
+            return(attr_type, attr_name.startswith("."))
+
         if len(attrs) > 0:
-            for attr_type, attr_name in attrs:
-                props = layout.operator(operators.NWAddAttrNode.bl_idname, text=attr_name)
-                props.attr_name = attr_name
-                props.attr_type = attr_type
+            for i, (k, g) in enumerate(itertools.groupby(attrs, group_by_type)):
+                if i > 0:
+                    layout.separator()
+
+                for attr_type, attr_name in g:
+                    props = layout.operator(operators.NWAddAttrNode.bl_idname, text=attr_name)
+                    props.attr_name = attr_name
+                    props.attr_type = attr_type
 
         else:
             layout.label(text="No attributes on objects with this material")
