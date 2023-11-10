@@ -542,15 +542,28 @@ class NWAttributeMenu(bpy.types.Menu):
 
         for obj in valid_objects:
             for attr in obj.data.attributes:
-                yield attr.name
+                yield ("GEOMETRY", attr.name)
 
         for inst in deps.object_instances:
             if inst.is_instance and inst.parent in valid_objects:
                 obj = inst.object
                 if is_valid(obj):
                     for attr in obj.data.attributes:
-                        print(attr.name, attr.domain, attr.data_type, dir(attr))
-                        yield attr.name
+                        yield ("GEOMETRY", attr.name)
+
+        for obj in valid_objects:
+            nodetrees = (m.node_group for m in obj.modifiers if m.type == 'NODES')
+            for tree in nodetrees:
+                for node in tree.nodes:
+                    if node.bl_label != "Store Named Attribute" or node.mute is True:
+                        continue
+
+                    attr_name = node.inputs["Name"].default_value
+                    if attr_name == "":
+                        continue
+                    
+                    domain = "INSTANCER" if node.domain == "INSTANCE" else "GEOMETRY"
+                    yield (domain, attr_name)
 
 
     def draw(self, context):
@@ -558,9 +571,11 @@ class NWAttributeMenu(bpy.types.Menu):
         attrs = sorted(list(set(self.fetch_attributes(context))))
 
         if len(attrs) > 0:
-            for attr in attrs:
-                props = layout.operator(operators.NWAddAttrNode.bl_idname, text=attr)
-                props.attr_name = attr
+            for attr_type, attr_name in attrs:
+                props = layout.operator(operators.NWAddAttrNode.bl_idname, text=attr_name)
+                props.attr_name = attr_name
+                props.attr_type = attr_type
+
         else:
             layout.label(text="No attributes on objects with this material")
 
