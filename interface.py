@@ -554,7 +554,7 @@ class NWAttributeMenu(bpy.types.Menu):
         for obj in valid_objects:
             nodetrees = (m.node_group for m in obj.modifiers if m.type == 'NODES')
             for tree in nodetrees:
-                for node in tree.nodes:
+                for node in getattr(tree, "nodes", []):
                     if node.bl_label != "Store Named Attribute" or node.mute is True:
                         continue
 
@@ -605,7 +605,7 @@ class NWNamedAttributeMenu(bpy.types.Menu):
         nodetrees = (m.node_group for m in obj.modifiers if m.type == 'NODES')
 
         for tree in nodetrees:
-            for node in tree.nodes:
+            for node in getattr(tree, "nodes", []):
                 if node.bl_label != "Store Named Attribute" or node.mute is True:
                     continue
 
