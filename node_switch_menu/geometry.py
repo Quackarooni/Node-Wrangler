@@ -205,6 +205,7 @@ class NODE_MT_NWSwitchNodes_category_GEO_GEOMETRY_OPERATIONS(Menu):
         layout.separator()
         switch_node_type(layout, "GeometryNodeSeparateComponents")
         switch_node_type(layout, "GeometryNodeSeparateGeometry")
+        switch_node_type(layout, "GeometryNodeSplitToInstances")
 
 
 class NODE_MT_NWSwitchNodes_category_GEO_GEOMETRY_SAMPLE(Menu):
@@ -268,6 +269,8 @@ class NODE_MT_NWSwitchNodes_category_GEO_INPUT_SCENE(Menu):
         switch_node_type(layout, "GeometryNodeCollectionInfo")
         switch_node_type(layout, "GeometryNodeImageInfo")
         switch_node_type(layout, "GeometryNodeIsViewport")
+        if context.preferences.experimental.use_grease_pencil_version3:
+            switch_node_type(layout, "GeometryNodeInputNamedLayerSelection")
         switch_node_type(layout, "GeometryNodeObjectInfo")
         switch_node_type(layout, "GeometryNodeInputSceneTime")
         switch_node_type(layout, "GeometryNodeSelfObject")
