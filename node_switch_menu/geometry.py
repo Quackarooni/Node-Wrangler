@@ -361,9 +361,9 @@ class NODE_MT_NWSwitchNodes_category_GEO_MESH_WRITE(Menu):
 
     def draw(self, context):
         layout = self.layout
-        switch_node_type(layout, "GeometryNodeSetShadeSmooth")
         if context.space_data.geometry_nodes_type == 'TOOL':
             switch_node_type(layout, "GeometryNodeToolSetFaceSet")
+        switch_node_type(layout, "GeometryNodeSetShadeSmooth")
 
 
 class NODE_MT_NWSwitchNodes_category_GEO_MESH_OPERATIONS(Menu):
