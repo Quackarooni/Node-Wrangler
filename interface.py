@@ -568,6 +568,7 @@ class NWAttributeMenu(bpy.types.Menu):
 
     def draw(self, context):
         layout = self.layout
+        row = layout.row()
         attrs = sorted(list(set(self.fetch_attributes(context))))
 
         def group_by_type(item):
@@ -575,14 +576,32 @@ class NWAttributeMenu(bpy.types.Menu):
             return(attr_type, attr_name.startswith("."))
 
         if len(attrs) > 0:
+
+            prev_domain = None
+
             for i, (k, g) in enumerate(itertools.groupby(attrs, group_by_type)):
-                if i > 0:
+                domain, is_hidden = k
+
+                if prev_domain != domain:
+                    layout = row.column(align=True)
+                else:
                     layout.separator()
+
+                if is_hidden:
+                    text = f"{domain.title()} (Hidden)"
+                else:
+                    text = f"{domain.title()}"
+
+                layout.label(text=text)
+                layout.separator()
 
                 for attr_type, attr_name in g:
                     props = layout.operator(operators.NWAddAttrNode.bl_idname, text=attr_name)
                     props.attr_name = attr_name
                     props.attr_type = attr_type
+                
+                prev_domain = domain
+                
 
         else:
             layout.label(text="No attributes on objects with this material")
