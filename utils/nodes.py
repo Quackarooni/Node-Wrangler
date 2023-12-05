@@ -260,6 +260,8 @@ def autolink(node1, node2, links):
     autolink_iter(visible_inputs, visible_outputs, 
         condition=(lambda inp, outp: not inp.is_linked))
     autolink_iter(visible_inputs, visible_outputs, 
+        condition=(lambda inp, outp: inp.type == outp.type and inp.is_multi_input))
+    autolink_iter(visible_inputs, visible_outputs, 
         condition=(lambda inp, outp: inp.type == outp.type))
 
     autolink_iter(available_inputs, available_outputs, 
