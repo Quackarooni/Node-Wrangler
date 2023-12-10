@@ -581,10 +581,10 @@ class NWAttributeMenu(bpy.types.Menu):
             return(attr_type, attr_name.startswith("."))
 
         if len(attrs) > 0:
-            
+
             prev_domain = None
 
-            for i, (k, g) in enumerate(itertools.groupby(attrs, group_by_type)):
+            for k, g in itertools.groupby(attrs, group_by_type):
                 domain, is_hidden = k
 
                 if prev_domain != domain:
