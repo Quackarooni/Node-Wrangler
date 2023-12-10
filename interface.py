@@ -624,8 +624,6 @@ class NWNamedAttributeMenu(bpy.types.Menu):
 
     @staticmethod
     def get_named_attrs(obj, active_tree=None):
-        # TODO - If the Active Node is a Store Named Attribute, it affects node ordering
-        # TODO - Look into a way to make this order more consistent
         nodetrees = (m.node_group for m in obj.modifiers if m.type == 'NODES')
 
         for tree in nodetrees:
@@ -637,26 +635,64 @@ class NWNamedAttributeMenu(bpy.types.Menu):
                 if attr_name == "":
                     continue
 
-                yield (attr_name, node.data_type)
+                is_instance = node.domain == 'INSTANCE'
+                is_hidden = attr_name.startswith(".")
+
+                yield (attr_name, (is_instance, is_hidden, node.data_type))
 
             if tree == active_tree:
                 break
 
     def draw(self, context):
         layout = self.layout
+        row = layout.row()
+
         active_object = context.active_object
-        
+
+        icon_dict = {
+            'Geometry': 'CUBE',
+            'Instance': 'EMPTY_AXIS'
+        }
+
+        def group_by_type(item):
+            attr_name, (is_instance, is_hidden, attr_type) = item
+            return(is_instance, is_hidden)
+
         active_tree = context.space_data.edit_tree
         if active_tree is None:
             active_tree = context.space_data.node_tree
 
-        attrs = sorted(tuple(dict(self.get_named_attrs(active_object, active_tree)).items()))
+        attrs = self.get_named_attrs(active_object, active_tree)
+        # Sort and remove duplicate entries based on recency
+        attrs = tuple(sorted(dict(attrs).items(), key=lambda x: (x[1][0], x[1][1], x[0]))) 
 
         if len(attrs) > 0:
-            for attr_name, attr_type in attrs:
-                props = layout.operator(operators.NWAddNamedAttrNode.bl_idname, text=attr_name)
-                props.attr_name = attr_name
-                props.attr_type = attr_type
+            prev_status = None
+
+            for k, g in itertools.groupby(attrs, group_by_type):
+                is_instance, is_hidden = k
+
+                if prev_status != is_instance:
+                    layout = row.column(align=True)
+                else:
+                    layout.separator()
+                
+                domain_name = "Instance" if is_instance else "Geometry"
+
+                if is_hidden:
+                    text = f"{domain_name} (Hidden)"
+                else:
+                    text = f"{domain_name}"
+
+                layout.label(text=text, icon=icon_dict[domain_name])
+                layout.separator()
+
+                for attr_name, (is_instance, is_hidden, attr_type) in g:
+                    props = layout.operator(operators.NWAddNamedAttrNode.bl_idname, text=attr_name)
+                    props.attr_name = attr_name
+                    props.attr_type = attr_type
+
+                prev_status = is_instance
         else:
             layout.label(text="No named attributes detected")
 
