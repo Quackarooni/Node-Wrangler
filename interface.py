@@ -569,14 +569,19 @@ class NWAttributeMenu(bpy.types.Menu):
     def draw(self, context):
         layout = self.layout
         row = layout.row()
-        attrs = sorted(list(set(self.fetch_attributes(context))))
+        attrs = sorted(list(set(self.fetch_attributes(context))), key=lambda x: (x[0], x[1].startswith("."), x[1]))
+
+        icon_dict = {
+            'GEOMETRY': 'CUBE',
+            'INSTANCER': 'EMPTY_AXIS'
+        }
 
         def group_by_type(item):
             attr_type, attr_name = item
             return(attr_type, attr_name.startswith("."))
 
         if len(attrs) > 0:
-
+            
             prev_domain = None
 
             for i, (k, g) in enumerate(itertools.groupby(attrs, group_by_type)):
@@ -592,7 +597,7 @@ class NWAttributeMenu(bpy.types.Menu):
                 else:
                     text = f"{domain.title()}"
 
-                layout.label(text=text)
+                layout.label(text=text, icon=icon_dict[domain])
                 layout.separator()
 
                 for attr_type, attr_name in g:
