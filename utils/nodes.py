@@ -361,7 +361,7 @@ def get_nodes_links(context):
     return tree.nodes, tree.links
 
 
-viewer_socket_name = "tmp_viewer"
+viewer_socket_name = "(NW) Preview"
 
 
 def is_viewer_socket(socket):
