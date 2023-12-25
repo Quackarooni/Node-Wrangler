@@ -1312,7 +1312,7 @@ class NWMergeNodes(Operator, NWBase):
         return new_node
 
     def execute(self, context):
-        settings = context.preferences.addons[__package__].preferences
+        settings = fetch_user_preferences()
         merge_hide = settings.merge_hide
         merge_position = settings.merge_position  # 'center' or 'bottom'
 
@@ -2615,7 +2615,7 @@ class NWAddPrincipledSetup(Operator, NWBase, ImportHelper):
 
         # Filter textures names for texturetypes in filenames
         # [Socket Name, [abbreviations and keyword list], Filename placeholder]
-        tags = context.preferences.addons[__package__].preferences.principled_tags
+        tags = fetch_user_preferences().principled_tags
         normal_abbr = tags.normal.split(' ')
         bump_abbr = tags.bump.split(' ')
         gloss_abbr = tags.gloss.split(' ')
@@ -3034,7 +3034,7 @@ class NWAlignNodes(Operator, NWBase):
     def execute(self, context):
         selection = [node for node in context.selected_nodes if node.type != 'FRAME']
         active_node = context.active_node
-        prefs = context.preferences.addons[__package__].preferences
+        prefs = fetch_user_preferences()
         margin_x, margin_y = prefs.align_nodes_margin
 
         # Somehow hidden nodes would come out 10 units higher that non-hidden nodes when aligned, so this offset has to exist
