@@ -21,7 +21,8 @@ from .utils.constants import (
     boolean_operations,
     boolean_operations_menu_dict
     )
-from .utils.nodes import get_nodes_links, fw_check, NWBase, fetch_user_preferences
+from .utils.nodes import get_nodes_links, fw_check, NWBase
+from .addon_utils  import fetch_user_preferences
 import itertools
 
 

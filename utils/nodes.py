@@ -63,14 +63,6 @@ def prev_in_list(items, key, *, wrap=False):
         return items[index - 1]
 
 
-def fetch_user_preferences(attr_id=None):
-    prefs = bpy.context.preferences.addons["Node Wrangler"].preferences
-
-    if attr_id is None:
-        return prefs
-    else:
-        return getattr(prefs, attr_id)
-
 def get_zone_output_node(node):
     valid_zone_nodes = (
         'GeometryNodeSimulationInput',

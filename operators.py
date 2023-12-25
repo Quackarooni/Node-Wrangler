@@ -53,7 +53,6 @@ from .utils.nodes import (
     filter_nodes_by_type,
     node_mid_pt, 
     get_bounds, 
-    fetch_user_preferences, 
     autolink, 
     node_at_pos, 
     get_active_tree, 
@@ -73,6 +72,8 @@ from .utils.nodes import (
     temporary_unframe, 
     viewer_socket_name
     )
+
+from .addon_utils import fetch_user_preferences
 
 class NodeSetting(bpy.types.PropertyGroup):
     value: StringProperty(

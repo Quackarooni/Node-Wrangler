@@ -12,6 +12,7 @@ from .utils.constants import nice_hotkey_name
 from rna_keymap_ui import _indented_layout as indented_layout
 from itertools import groupby
 
+
 # Principled prefs
 class NWPrincipledPreferences(bpy.types.PropertyGroup):
     base_color: StringProperty(
@@ -66,7 +67,7 @@ class NWPrincipledPreferences(bpy.types.PropertyGroup):
 
 # Addon prefs
 class NWNodeWrangler(bpy.types.AddonPreferences):
-    bl_idname = "Node Wrangler"
+    bl_idname = __package__
 
     merge_hide: EnumProperty(
         name="Hide Mix nodes",
