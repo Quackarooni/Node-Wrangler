@@ -7,3 +7,12 @@ def fetch_user_preferences(attr_id=None):
         return prefs
     else:
         return getattr(prefs, attr_id)
+
+def safe_poll(poll_function):
+    def safe_poll_function(cls, context):
+        try:
+            return poll_function(cls, context)
+        except AttributeError:
+            return False
+    
+    return classmethod(safe_poll_function)

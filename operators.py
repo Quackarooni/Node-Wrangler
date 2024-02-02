@@ -73,7 +73,7 @@ from .utils.nodes import (
     viewer_socket_name
     )
 
-from .addon_utils import fetch_user_preferences
+from .addon_utils import fetch_user_preferences, safe_poll
 
 class NodeSetting(bpy.types.PropertyGroup):
     value: StringProperty(
@@ -3007,6 +3007,7 @@ class NWAlignNodes(Operator, NWBase):
             return "Aligns nodes in a column from top to bottom"
 
     @classmethod
+    @safe_poll
     def poll(cls, context):
         selection = (node for node in context.selected_nodes if node.type != 'FRAME')
         for index, _ in enumerate(selection):
