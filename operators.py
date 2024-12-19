@@ -4,9 +4,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import itertools
+import functools
 import bpy
 
-from bpy.types import Operator, PropertyGroup
+from bpy.types import Operator, PropertyGroup, NodeSocketVirtual
 from bpy.props import (
     FloatProperty,
     EnumProperty,
@@ -74,6 +75,7 @@ from .utils.nodes import (
     )
 
 from .addon_utils import fetch_user_preferences, safe_poll
+from .sock_utils import get_socket_location
 
 class NodeSetting(bpy.types.PropertyGroup):
     value: StringProperty(
@@ -719,6 +721,11 @@ class NWPreviewNode(Operator, NWBase):
                     self.search_sockets(materialout, self.used_viewer_sockets_other_mats)
         return socket in self.used_viewer_sockets_other_mats
 
+    @staticmethod
+    def is_valid_socket(socket):
+        return not (socket.hide or isinstance(socket, NodeSocketVirtual))
+
+    # TODO - FIX THIS NOT WORKING IN THE COMPOSITOR
     def invoke(self, context, event):
         space = context.space_data
         # Ignore operator when running in wrong context.
@@ -729,12 +736,22 @@ class NWPreviewNode(Operator, NWBase):
         self.init_shader_variables(space, shader_type)
         mlocx = event.mouse_region_x
         mlocy = event.mouse_region_y
+        context.space_data.cursor_location_from_region(event.mouse_region_x, event.mouse_region_y)
+
+        # TODO - AVOID USING THIS OPERATOR TO AVOID ADDING TO THE UNDO STACK
         select_node = bpy.ops.node.select(location=(mlocx, mlocy), extend=False)
         if 'FINISHED' in select_node:  # only run if mouse click is on a node
             active_tree, path_to_tree = get_active_tree(context)
             nodes, links = active_tree.nodes, active_tree.links
             base_node_tree = space.node_tree
             active = nodes.active
+
+            region = context.region
+            mouse_pos = Vector(region.view2d.region_to_view(mlocx, mlocy))
+            distance_from_mouse = lambda sock : (mouse_pos - get_socket_location(sock)).magnitude
+
+            visible_outputs = filter(self.is_valid_socket, active.outputs)
+            closest_outputs = sorted(visible_outputs, key=distance_from_mouse)
 
             # For geometry node trees we just connect to the group output
             if space.tree_type == "GeometryNodeTree":
@@ -756,28 +773,16 @@ class NWPreviewNode(Operator, NWBase):
                 # Find (or create if needed) the output of this node tree
                 geometryoutput = self.ensure_group_output(base_node_tree)
 
-                # Analyze outputs, make links
-                out_i = None
-                valid_outputs = []
-                for i, out in enumerate(active.outputs):
-                    if is_visible_socket(out) and out.type == 'GEOMETRY':
-                        valid_outputs.append(i)
-                if valid_outputs:
-                    out_i = valid_outputs[0]  # Start index of node's outputs
-                for i, valid_i in enumerate(valid_outputs):
-                    for out_link in active.outputs[valid_i].links:
-                        if is_viewer_link(out_link, geometryoutput):
-                            if nodes == base_node_tree.nodes or self.link_leads_to_used_socket(out_link):
-                                if i < len(valid_outputs) - 1:
-                                    out_i = valid_outputs[i + 1]
-                                else:
-                                    out_i = valid_outputs[0]
 
                 make_links = []  # store sockets for new links
                 if active.outputs:
                     # If there is no 'GEOMETRY' output type - We can't preview the node
-                    if out_i is None:
+
+                    try:
+                        socket_to_connect = closest_outputs[0]
+                    except Exception:
                         return {'FINISHED'}
+
                     socket_type = 'GEOMETRY'
                     # Find an input socket of the output of type geometry
                     geometryoutindex = None
@@ -790,7 +795,7 @@ class NWPreviewNode(Operator, NWBase):
                         geometryoutput.inputs.new(socket_type, 'Geometry')
                         geometryoutindex = len(geometryoutput.inputs) - 1
 
-                    make_links.append((active.outputs[out_i], geometryoutput.inputs[geometryoutindex]))
+                    make_links.append((socket_to_connect, geometryoutput.inputs[geometryoutindex]))
                     output_socket = geometryoutput.inputs[geometryoutindex]
                     for li_from, li_to in make_links:
                         connect_sockets(li_from, li_to)
@@ -799,7 +804,7 @@ class NWPreviewNode(Operator, NWBase):
                     while tree.nodes.active != active:
                         node = tree.nodes.active
                         viewer_socket = self.ensure_viewer_socket(
-                            node, 'NodeSocketGeometry', connect_socket=active.outputs[out_i] if node.node_tree.nodes.active == active else None)
+                            node, 'NodeSocketGeometry', connect_socket=socket_to_connect if node.node_tree.nodes.active == active else None)
                         link_start = node.outputs[viewer_socket_name]
                         node_socket = viewer_socket
                         if node_socket in delete_sockets:
@@ -808,7 +813,7 @@ class NWPreviewNode(Operator, NWBase):
                         # Iterate
                         link_end = self.ensure_group_output(node.node_tree).inputs[viewer_socket_name]
                         tree = tree.nodes.active.node_tree
-                    connect_sockets(active.outputs[out_i], link_end)
+                    connect_sockets(socket_to_connect, link_end)
 
                 # Delete sockets
                 for socket in delete_sockets:
@@ -831,7 +836,7 @@ class NWPreviewNode(Operator, NWBase):
                 # get material_output node
                 materialout = None  # placeholder node
                 delete_sockets = []
-
+                
                 # scan through all nodes in tree including nodes inside of groups to find viewer sockets
                 self.scan_nodes(base_node_tree, delete_sockets)
 
@@ -840,28 +845,17 @@ class NWPreviewNode(Operator, NWBase):
                     materialout = base_node_tree.nodes.new(self.shader_output_ident)
                     materialout.location = get_output_location(base_node_tree)
                     materialout.select = False
-                # Analyze outputs
-                out_i = None
-                valid_outputs = []
-                for i, out in enumerate(active.outputs):
-                    if is_visible_socket(out):
-                        valid_outputs.append(i)
-                if valid_outputs:
-                    out_i = valid_outputs[0]  # Start index of node's outputs
-                for i, valid_i in enumerate(valid_outputs):
-                    for out_link in active.outputs[valid_i].links:
-                        if is_viewer_link(out_link, materialout):
-                            if nodes == base_node_tree.nodes or self.link_leads_to_used_socket(out_link):
-                                if i < len(valid_outputs) - 1:
-                                    out_i = valid_outputs[i + 1]
-                                else:
-                                    out_i = valid_outputs[0]
 
                 make_links = []  # store sockets for new links
+                check_links_func = functools.partial(is_viewer_link, output_node=materialout)
+                #if any(map(check_links_func, closest_outputs[0].links)):
+                #    return {'CANCELLED'}
+
                 if active.outputs:
+                    socket_to_connect = closest_outputs[0]
                     socket_type = 'NodeSocketShader'
-                    materialout_index = 1 if active.outputs[out_i].name == "Volume" else 0
-                    make_links.append((active.outputs[out_i], materialout.inputs[materialout_index]))
+                    materialout_index = 1 if socket_to_connect.name == "Volume" else 0
+                    make_links.append((socket_to_connect, materialout.inputs[materialout_index]))
                     output_socket = materialout.inputs[materialout_index]
                     for li_from, li_to in make_links:
                         connect_sockets(li_from, li_to)
@@ -872,7 +866,7 @@ class NWPreviewNode(Operator, NWBase):
                     while tree.nodes.active != active:
                         node = tree.nodes.active
                         viewer_socket = self.ensure_viewer_socket(
-                            node, socket_type, connect_socket=active.outputs[out_i] if node.node_tree.nodes.active == active else None)
+                            node, socket_type, connect_socket=socket_to_connect if node.node_tree.nodes.active == active else None)
                         link_start = node.outputs[viewer_socket_name]
                         node_socket = viewer_socket
                         if node_socket in delete_sockets:
@@ -881,7 +875,7 @@ class NWPreviewNode(Operator, NWBase):
                         # Iterate
                         link_end = self.ensure_group_output(node.node_tree).inputs[viewer_socket_name]
                         tree = tree.nodes.active.node_tree
-                    connect_sockets(active.outputs[out_i], link_end)
+                    connect_sockets(socket_to_connect, link_end)
 
                 # Delete sockets
                 for socket in delete_sockets:
@@ -3516,6 +3510,9 @@ class NWViewerFocus(bpy.types.Operator):
 
         return self.execute(context)
 
+def region_to_view(context, location):
+    region = context.region
+    x, y = region.view2d.view_to_region(*location, clip=False)
 
 class NWSaveViewer(bpy.types.Operator, ExportHelper):
     """Save the current viewer node to an image file"""
